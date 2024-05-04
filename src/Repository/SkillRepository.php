@@ -44,4 +44,15 @@ class SkillRepository extends EntityRepository
 
         return $qb->getQuery()->getOneOrNullResult();
     }
+
+    public function getSkills(int $page, int $per_page)
+    {
+        $qb = $this->createQueryBuilder('s');
+        $qb
+            ->select('s')
+            ->setFirstResult($per_page * ($page - 1))
+            ->setMaxResults($per_page);
+
+        return $qb->getQuery()->getResult();
+    }
 }

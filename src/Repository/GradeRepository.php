@@ -21,4 +21,18 @@ class GradeRepository extends EntityRepository
 
         return $qb->getQuery()->getOneOrNullResult();
     }
+
+    public function getGrades(int $page, int $per_page)
+    {
+        $page = $page > 0 ? $page : 1;
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb
+            ->select('g')
+            ->from($this->getClassName(), 'g')
+            ->orderBy('g.id', 'DESC')
+            ->setFirstResult(($per_page * ($page - 1)))
+            ->setMaxResults($per_page);
+
+        return $qb->getQuery()->getResult();
+    }
 }

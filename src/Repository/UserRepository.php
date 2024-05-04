@@ -15,7 +15,7 @@ class UserRepository extends EntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb
             ->select('u')
-            ->from($this->getClassName(), 'u')
+            ->from(User::class, 'u')
             ->where('u.id = :id')
             ->andWhere('u.status = :status')
             ->setParameter('id', $id)
@@ -26,9 +26,10 @@ class UserRepository extends EntityRepository
 
     public function findActiveUsersByEmail(string $email): array
     {
-        $qb = $this->createQueryBuilder('u');
+        $qb = $this->getEntityManager()->createQueryBuilder();
         $qb
             ->select('u')
+            ->from(User::class, 'u', 'u')
             ->where('u.email = :email')
             ->andWhere('u.status = :status')
             ->setParameter('email', $email)
@@ -39,11 +40,25 @@ class UserRepository extends EntityRepository
 
     public function findUsersBySurname(string $surname): array
     {
-        $qb = $this->createQueryBuilder('u');
+        $qb = $this->getEntityManager()->createQueryBuilder();
         $qb
             ->select('u')
+            ->from(User::class, 'u')
             ->where('u.surname = :surname')
             ->setParameter('surname', $surname);
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function getUsers(int $page, int $perPage): array
+    {
+        $page = $page > 0 ? $page : 1;
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('u')
+            ->from(User::class, 'u')
+            ->orderBy('u.id', 'DESC')
+            ->setFirstResult($perPage * ($page - 1))
+            ->setMaxResults($perPage);
 
         return $qb->getQuery()->getResult();
     }

@@ -9,15 +9,15 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Table(name: '`user_role`')]
 #[ORM\Entity]
-#[ORM\Index(name: 'user_role__user_id', columns: ['user_id'])]
-#[ORM\Index(name: 'user_role__role_id', columns: ['role_id'])]
-#[ORM\UniqueConstraint(name: 'user_role__user_id_role_id', columns: ['user_id', 'role_id'])]
+#[ORM\Index(name: 'user_role__user_id__idx', columns: ['user_id'])]
+#[ORM\Index(name: 'user_role__role_id__idx', columns: ['role_id'])]
+#[ORM\UniqueConstraint(name: 'user_role__user_id_role_id__uq', columns: ['user_id', 'role_id'])]
 class UserRole
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(name: 'id', type: Types::BIGINT, unique: true)]
-    private readonly int|string $id;
+    private int|string $id;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'roles')]
     #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id')]
@@ -26,6 +26,11 @@ class UserRole
     #[ORM\ManyToOne(targetEntity: Role::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: 'role_id', referencedColumnName: 'id')]
     private Role $role;
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
 
     public function getUser(): User
     {

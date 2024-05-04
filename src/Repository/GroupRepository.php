@@ -54,4 +54,18 @@ class GroupRepository extends EntityRepository
 
         return $qb->getQuery()->getOneOrNullResult();
     }
+
+    public function getGroups(int $page, int $per_page)
+    {
+        $page = $page > 0 ? $page : 1;
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb
+            ->select('g')
+            ->from($this->getClassName(), 'g')
+            ->orderBy('g.id', 'DESC')
+            ->setFirstResult(($page - 1) * $per_page)
+            ->setMaxResults($per_page);
+
+        return $qb->getQuery()->getResult();
+    }
 }

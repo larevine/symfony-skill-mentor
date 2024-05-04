@@ -11,11 +11,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use JetBrains\PhpStorm\ArrayShape;
 
 #[ORM\Table(name: '`users`')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Index(name: 'users__email', columns: ['email'])]
-#[ORM\UniqueConstraint(name: 'users__email', columns: ['email'])]
+#[ORM\Index(name: 'users__email__idx', columns: ['email'])]
+#[ORM\UniqueConstraint(name: 'users__email__uq', columns: ['email'])]
 #[ORM\HasLifecycleCallbacks]
 class User
 {
@@ -24,13 +25,10 @@ class User
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(name: 'id', type: Types::BIGINT, unique: true)]
-    private readonly int|string $id;
+    private int|string $id;
 
     #[ORM\Column(name: 'email', type: Types::STRING, length: 150, nullable: false)]
     private string $email;
-
-//    #[ORM\Column(name: 'password', type: Types::STRING, length: 150, nullable: false)]
-//    private string $password;
 
     #[ORM\Column(name: 'name', type: Types::STRING, length: 120, nullable: false)]
     private string $name;
@@ -39,7 +37,7 @@ class User
     private string $surname;
 
     #[ORM\Column(name: 'status', type: Types::SMALLINT, nullable: false, enumType: UserStatus::class, options: ['default' => UserStatus::ACTIVE])]
-    private int $status;
+    private UserStatus $status;
 
     #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'user')]
     private Collection $roles;
@@ -47,10 +45,14 @@ class User
     #[ORM\OneToMany(targetEntity: GroupUser::class, mappedBy: 'user')]
     private Collection $groups;
 
+    #[ORM\OneToMany(targetEntity: UserSkill::class, mappedBy: 'user')]
+    private Collection $skills;
+
     public function __construct()
     {
         $this->roles = new ArrayCollection();
         $this->groups = new ArrayCollection();
+        $this->skills = new ArrayCollection();
     }
 
     public function getId(): int
@@ -67,12 +69,6 @@ class User
     {
         return $this->email;
     }
-
-    // TODO: hash password
-//    public function setPassword(string $password): void
-//    {
-//        $this->password = $password;
-//    }
 
     public function setName(string $name): void
     {
@@ -99,20 +95,27 @@ class User
         $this->surname = $surname;
     }
 
-    public function setStatus(int $status): void
+    public function setStatus(UserStatus $status): void
     {
         $this->status = $status;
     }
 
-    public function getStatus(): int
+    public function getStatus(): string
     {
-        return $this->status;
+        return $this->status->toString();
     }
 
     public function addRole(UserRole $role): void
     {
         if (!$this->roles->contains($role)) {
             $this->roles->add($role);
+        }
+    }
+
+    public function removeRole(UserRole $role): void
+    {
+        if ($this->roles->contains($role)) {
+            $this->roles->removeElement($role);
         }
     }
 
@@ -123,12 +126,94 @@ class User
         }
     }
 
+    public function removeGroup(GroupUser $group): void
+    {
+        if ($this->groups->contains($group)) {
+            $this->groups->removeElement($group);
+        }
+    }
+
+    public function addSkill(UserSkill $skill): void
+    {
+        if (!$this->skills->contains($skill)) {
+            $this->skills->add($skill);
+        }
+    }
+
+    public function removeSkill(UserSkill $skill): void
+    {
+        if ($this->skills->contains($skill)) {
+            $this->skills->removeElement($skill);
+        }
+    }
+
+    /**
+     * @return array<UserRole>
+     */
+    public function getRoles(): array
+    {
+        return $this->roles->map(function (UserRole $role) {
+            return $role->getRole();
+        })->toArray();
+    }
+
+    /**
+     * @return array<GroupUser>
+     */
+    public function getGroups(): array
+    {
+        return $this->groups->map(function (GroupUser $group) {
+            return $group->getGroup();
+        })->toArray();
+    }
+
+    /**
+     * @return array<UserSkill>
+     */
+    public function getSkills(): array
+    {
+        return $this->skills->map(function (UserSkill $skill) {
+            return $skill->getSkill();
+        })->toArray();
+    }
+
+    #[ArrayShape([
+            'id' => 'int',
+            'email' => 'string',
+            'fullname' => 'string',
+            'created_at' => 'string',
+            'updated_at' => 'string',
+            'roles' => 'string[]',
+            'groups' => 'string[]',
+            'skills' => 'string[]',
+    ])]
     public function toArray(): array
     {
         return [
             'id' => $this->id,
             'email' => $this->email,
-            'name' => $this->getFullName()
+            'fullname' => $this->getFullName(),
+            'status' => $this->getStatus(),
+            'created_at' => $this->createdAt->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updatedAt->format('Y-m-d H:i:s'),
+            'roles' => array_map(
+                static fn(UserRole $role) => [
+                    $role->getRole()->getName(),
+                ],
+                $this->roles->toArray()
+            ),
+            'groups' => array_map(
+                static fn(GroupUser $group) => [
+                    $group->getGroup()->getName(),
+                ],
+                $this->groups->toArray()
+            ),
+            'skills' => array_map(
+                static fn(UserSkill $skill) => [
+                    $skill->getGroup()->getName(),
+                ],
+                $this->skills->toArray()
+            ),
         ];
     }
 }
