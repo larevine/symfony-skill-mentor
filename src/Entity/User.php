@@ -37,22 +37,22 @@ class User
     private string $surname;
 
     #[ORM\Column(name: 'status', type: Types::SMALLINT, nullable: false, enumType: UserStatus::class, options: ['default' => UserStatus::ACTIVE])]
-    private UserStatus $status;
+    private UserStatus $status = UserStatus::ACTIVE;
 
     #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'user')]
     private Collection $roles;
 
-    #[ORM\OneToMany(targetEntity: GroupUser::class, mappedBy: 'user')]
-    private Collection $groups;
-
     #[ORM\OneToMany(targetEntity: UserSkill::class, mappedBy: 'user')]
     private Collection $skills;
+
+    #[ORM\OneToMany(targetEntity: GroupUser::class, mappedBy: 'user')]
+    private Collection $groups;
 
     public function __construct()
     {
         $this->roles = new ArrayCollection();
-        $this->groups = new ArrayCollection();
         $this->skills = new ArrayCollection();
+        $this->groups = new ArrayCollection();
     }
 
     public function getId(): int
@@ -100,9 +100,9 @@ class User
         $this->status = $status;
     }
 
-    public function getStatus(): string
+    public function getStatus(): UserStatus
     {
-        return $this->status->toString();
+        return $this->status;
     }
 
     public function addRole(UserRole $role): void
@@ -158,22 +158,22 @@ class User
     }
 
     /**
-     * @return array<GroupUser>
-     */
-    public function getGroups(): array
-    {
-        return $this->groups->map(function (GroupUser $group) {
-            return $group->getGroup();
-        })->toArray();
-    }
-
-    /**
      * @return array<UserSkill>
      */
     public function getSkills(): array
     {
         return $this->skills->map(function (UserSkill $skill) {
             return $skill->getSkill();
+        })->toArray();
+    }
+
+    /**
+     * @return array<GroupUser>
+     */
+    public function getGroups(): array
+    {
+        return $this->groups->map(function (GroupUser $group) {
+            return $group->getGroup();
         })->toArray();
     }
 

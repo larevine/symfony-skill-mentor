@@ -44,7 +44,7 @@ class UserFixtures extends Fixture implements OrderedFixtureInterface
                 'surname' => 'Учителев',
                 'roles' => [$this->getReference(Roles::TEACHER->name)->getName()],
                 'skill_ids' => [
-                    $this->getReference(Skills::SYMFONY->name.'_'.SkillLevel::EXPERT->toString())->getId(),
+                    $this->getReference(Skills::SYMFONY->name . '_' . SkillLevel::EXPERT->toString())->getId(),
                 ],
             ],
             [
@@ -54,7 +54,7 @@ class UserFixtures extends Fixture implements OrderedFixtureInterface
                 'surname' => 'Студентов',
                 'roles' => [$this->getReference(Roles::STUDENT->name)->getName()],
                 'skill_ids' => [
-                    $this->getReference(Skills::SYMFONY->name.'_'.SkillLevel::BASIC->toString())->getId(),
+                    $this->getReference(Skills::SYMFONY->name . '_' . SkillLevel::BASIC->toString())->getId(),
                 ],
             ],
             [
@@ -64,7 +64,7 @@ class UserFixtures extends Fixture implements OrderedFixtureInterface
                 'surname' => 'Лотар',
                 'roles' => [$this->getReference(Roles::STUDENT->name)->getName()],
                 'skill_ids' => [
-                    $this->getReference(Skills::SYMFONY->name.'_'.SkillLevel::BASIC->toString())->getId(),
+                    $this->getReference(Skills::SYMFONY->name . '_' . SkillLevel::BASIC->toString())->getId(),
                 ],
             ],
             [
@@ -74,7 +74,7 @@ class UserFixtures extends Fixture implements OrderedFixtureInterface
                 'surname' => 'Нефарий',
                 'roles' => [$this->getReference(Roles::STUDENT->name)->getName()],
                 'skill_ids' => [
-                    $this->getReference(Skills::SYMFONY->name.'_'.SkillLevel::BASIC->toString())->getId(),
+                    $this->getReference(Skills::SYMFONY->name . '_' . SkillLevel::BASIC->toString())->getId(),
                 ],
             ]
         ];
@@ -85,7 +85,7 @@ class UserFixtures extends Fixture implements OrderedFixtureInterface
                     email: $user['email'],
                     name: $user['name'],
                     surname: $user['surname'],
-                    status: UserStatus::ACTIVE->toString(),
+                    status: UserStatus::ACTIVE,
                     roles: $user['roles'],
                     skill_ids: $user['skill_ids'],
                 ),

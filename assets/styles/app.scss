@@ -1,7 +1,12 @@
 @import "~bootstrap/scss/bootstrap";
 
-$color: orange;
+$page-background: white;
+$form-color: rgba(224, 221, 178, 0.7);
 
 body {
-    background-color: $color;
+    background-color: $page-background;
+}
+
+form {
+    background-color: $form-color;
 }

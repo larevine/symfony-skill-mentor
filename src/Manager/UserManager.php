@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\DTO\ManageUserDTO;
-use App\Entity\Enum\UserStatus;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -65,7 +64,7 @@ readonly class UserManager
         $user->setEmail($manage_user_DTO->email);
         $user->setName($manage_user_DTO->name);
         $user->setSurname($manage_user_DTO->surname);
-        $user->setStatus(UserStatus::fromString($manage_user_DTO->status));
+        $user->setStatus($manage_user_DTO->status);
         $user->setUpdatedAt();
         $this->em->persist($user);
         $this->em->flush();

@@ -91,9 +91,9 @@ class Group
         $this->skill = $skill;
     }
 
-    public function getLevel(): string
+    public function getLevel(): SkillLevel
     {
-        return $this->level->toString();
+        return $this->level;
     }
 
     public function setLevel(SkillLevel $level): void

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Entity\Grade;
 use App\Entity\Group;
 use App\Entity\Skill;
 use Doctrine\ORM\EntityRepository;
@@ -36,21 +35,6 @@ class GroupRepository extends EntityRepository
             ->andWhere('s.id = :skill_id')
             ->setParameter('name', $name)
             ->setParameter('skill_id', $skill->getId());
-
-        return $qb->getQuery()->getOneOrNullResult();
-    }
-
-    public function findByNameAndGrade(string $name, Grade $grade): ?Group
-    {
-        $qb = $this->getEntityManager()->createQueryBuilder();
-        $qb
-            ->select('g')
-            ->from($this->getClassName(), 'g')
-            ->leftJoin(Grade::class, 'gr', Join::WITH, 'gr.id = g.grade_id')
-            ->where('g.name = :name')
-            ->andWhere('gr.id = :grade_id')
-            ->setParameter('name', $name)
-            ->setParameter('grade_id', $grade->getId());
 
         return $qb->getQuery()->getOneOrNullResult();
     }

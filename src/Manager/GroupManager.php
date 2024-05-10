@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Manager;
 
 use App\DTO\ManageGroupDTO;
-use App\Entity\Enum\SkillLevel;
 use App\Entity\Group;
 use App\Entity\Skill;
 use App\Repository\GroupRepository;
@@ -59,7 +58,7 @@ readonly class GroupManager
         $group->setLimitStudents($manage_group_DTO->limit_students);
         $group->setLimitTeachers($manage_group_DTO->limit_teachers);
         $group->setSkill($skill);
-        $group->setLevel(SkillLevel::fromString($manage_group_DTO->level));
+        $group->setLevel($manage_group_DTO->level);
         $this->em->persist($group);
         $this->em->flush();
 

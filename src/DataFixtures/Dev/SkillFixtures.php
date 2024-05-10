@@ -23,7 +23,7 @@ class SkillFixtures extends Fixture implements OrderedFixtureInterface
                 $manager->persist($new_skill);
                 $manager->flush();
 
-                $this->addReference($skill->name.'_'.$level->toString(), $new_skill);
+                $this->addReference($skill->name . '_' . $level->toString(), $new_skill);
             }
         }
     }

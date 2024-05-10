@@ -34,7 +34,9 @@ class UserController extends AbstractController
         $users = $this->user_manager->getUsers($page ?? 0, $per_page ?? 20);
         $code = empty($users) ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
 
-        return $this->json(['users' => array_map(static fn(User $user) => $user->toArray(), $users)], $code,
+        return $this->json(
+            ['users' => array_map(static fn(User $user) => $user->toArray(), $users)],
+            $code,
             context: ['json_encode_options' => JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT],
         );
     }

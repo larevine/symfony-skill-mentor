@@ -18,27 +18,21 @@ class ManageUserDTO
         #[Assert\Email]
         #[Assert\NotBlank]
         #[Assert\Length(max: 150)]
-        public string $email,
-
+        public string $email = '',
         #[Assert\NotBlank]
         #[Assert\Length(max: 120)]
-        public string $name,
-
+        public string $name = '',
         #[Assert\NotBlank]
         #[Assert\Length(max: 120)]
-        public string $surname,
-
-        #[Assert\NotBlank]
-        #[Assert\Choice(callback: [UserStatus::class, 'stringValues'], strict: true)]
-        public string $status,
-
+        public string $surname = '',
+        #[Assert\Choice(callback: [UserStatus::class, 'cases'], strict: true)]
+        public UserStatus $status = UserStatus::ACTIVE,
         #[Assert\Valid]
         #[Type('array<string>')]
-        public array $roles,
-
+        public array $roles = [],
         #[Assert\Valid]
         #[Type('array<int>')]
-        public array $skill_ids,
+        public array $skill_ids = [],
     ) {
     }
 
@@ -50,21 +44,12 @@ class ManageUserDTO
             'surname' => $user->getSurname(),
             'status' => $user->getStatus(),
             'roles' => array_map(
-                static function (Role $role) {
-                    return [
-                        'id' => $role->getId(),
-                        'name' => $role->getName(),
-                    ];
-                },
+                static fn (Role $role) => $role->getName(),
                 $user->getRoles()
             ),
-            'skills' => array_map(
+            'skill_ids' => array_map(
                 static function (Skill $skill) {
-                    return [
-                        'id' => $skill->getId(),
-                        'name' => $skill->getName(),
-                        'level' => $skill->getLevel(),
-                    ];
+                    return $skill->getId();
                 },
                 $user->getSkills()
             ),

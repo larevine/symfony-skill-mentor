@@ -17,9 +17,8 @@ class GroupFixtures extends Fixture implements OrderedFixtureInterface
 {
     public function __construct(
         private readonly GroupBuilderService $group_builder,
-        private readonly GroupManager        $group_manager,
-    )
-    {
+        private readonly GroupManager $group_manager,
+    ) {
     }
 
     /**
@@ -34,7 +33,7 @@ class GroupFixtures extends Fixture implements OrderedFixtureInterface
                 'limit_teachers' => 2,
                 'limit_students' => 10,
                 'skill_id' => $this->getReference(Skills::SYMFONY->name . '_' . SkillLevel::ADVANCED->toString())->getId(),
-                'level' => SkillLevel::ADVANCED->toString(),
+                'level' => SkillLevel::ADVANCED,
                 'user_ids' => [
                     $this->getReference('USER_TEACHER_1_REFERENCE')->getId(),
                     $this->getReference('USER_STUDENT_1_REFERENCE')->getId(),
@@ -47,7 +46,7 @@ class GroupFixtures extends Fixture implements OrderedFixtureInterface
                 'limit_teachers' => 1,
                 'limit_students' => 3,
                 'skill_id' => $this->getReference(Skills::PHP->name . '_' . SkillLevel::BASIC->toString())->getId(),
-                'level' => SkillLevel::BASIC->toString(),
+                'level' => SkillLevel::BASIC,
                 'user_ids' => [
                     $this->getReference('USER_TEACHER_1_REFERENCE')->getId(),
                     $this->getReference('USER_STUDENT_1_REFERENCE')->getId(),

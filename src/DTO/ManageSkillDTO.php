@@ -15,10 +15,9 @@ class ManageSkillDTO
         #[Assert\NotBlank]
         #[Assert\Length(max: 120)]
         public string $name,
-
         #[Assert\NotBlank]
-        #[Assert\Choice(choices: [SkillLevel::class, 'stringValues'], strict: true)]
-        public string $level,
+        #[Assert\Choice(callback: [SkillLevel::class, 'cases'], strict: true)]
+        public SkillLevel $level,
     ) {
     }
 

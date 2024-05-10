@@ -14,27 +14,20 @@ use Symfony\Component\Validator\Constraints as Assert;
 class ManageGroupDTO
 {
     public function __construct(
-        #[Assert\Email]
         #[Assert\NotBlank]
         #[Assert\Length(max: 120)]
-        public string $name,
-
+        public string $name = '',
         #[Assert\PositiveOrZero]
-        public int $limit_teachers,
-
+        public int $limit_teachers = 0,
         #[Assert\PositiveOrZero]
-        public int $limit_students,
-
-        #[Assert\Positive]
-        public int $skill_id,
-
+        public int $limit_students = 0,
         #[Assert\NotBlank]
-        #[Assert\Choice(choices: [SkillLevel::class, 'stringValues'])]
-        public string $level,
-
+        public ?int $skill_id = null,
+        #[Assert\Choice(callback: [SkillLevel::class, 'cases'], strict: true)]
+        public SkillLevel $level = SkillLevel::BASIC,
         #[Assert\Valid]
         #[Type('array<int>')]
-        public array $user_ids,
+        public array $user_ids = [],
     ) {
     }
 
@@ -60,7 +53,7 @@ class ManageGroupDTO
             limit_teachers: $request->request->get('limit_teachers') ?? $request->query->get('limit_teachers'),
             limit_students: $request->request->get('limit_students') ?? $request->query->get('limit_students'),
             skill_id: $request->request->get('skill_id') ?? $request->query->get('skill_id'),
-            level: $request->request->get('level') ?? $request->query->get('level'),
+            level: $request->request->get('level') ?? $request->query->get('level') ?? SkillLevel::BASIC,
             user_ids: $request->request->get('user_ids') ?? $request->query->get('user_ids') ?? [],
         );
     }

@@ -42,14 +42,19 @@ class Skill
         return $this->name;
     }
 
+    public function getFullName(): string
+    {
+        return $this->name . ' ' . $this->level->toString();
+    }
+
     public function setName(string $name): void
     {
         $this->name = $name;
     }
 
-    public function getLevel(): string
+    public function getLevel(): SkillLevel
     {
-        return $this->level->toString();
+        return $this->level;
     }
 
     public function setLevel(SkillLevel $level): void

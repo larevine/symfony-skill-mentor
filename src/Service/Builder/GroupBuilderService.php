@@ -13,8 +13,8 @@ use App\Manager\SkillManager;
 readonly class GroupBuilderService
 {
     public function __construct(
-        private GroupManager     $group_manager,
-        private SkillManager     $skill_manager,
+        private GroupManager $group_manager,
+        private SkillManager $skill_manager,
         private GroupUserManager $group_user_manager
     ) {
     }

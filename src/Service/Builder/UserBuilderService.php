@@ -15,10 +15,10 @@ use App\Manager\UserRoleManager;
 readonly class UserBuilderService
 {
     public function __construct(
-        private RoleManager      $role_manager,
-        private UserManager      $user_manager,
-        private SkillManager     $skill_manager,
-        private UserRoleManager  $user_role_manager,
+        private RoleManager $role_manager,
+        private UserManager $user_manager,
+        private SkillManager $skill_manager,
+        private UserRoleManager $user_role_manager,
         private UserSkillManager $user_skill_manager,
     ) {
     }
