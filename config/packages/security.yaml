@@ -4,14 +4,27 @@ security:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
-        users_in_memory: { memory: null }
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
-        main:
-            lazy: true
-            provider: users_in_memory
+
+        api:
+            pattern: ^/api/
+            security: true
+            stateless: true
+            custom_authenticators:
+                - App\Service\Security\TokenAuthenticator
+
+        web:
+            pattern: ^/(?!api)
+            stateless: false
+            custom_authenticators:
+                - App\Service\Security\AppLoginAuthenticator
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#the-firewall
@@ -22,8 +35,29 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+    # API Groups
+             - { path: ^/api/v1/groups$, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/groups/\d+, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/groups.*$, roles: [ROLE_ADMIN], methods: [POST, PATCH, PUT, DELETE] }
+    # API Roles
+             - { path: ^/api/v1/roles$, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/roles/\d+, roles: ROLE_BASE, methods: [GET] }
+             - { path: ^/api/v1/roles.*$, roles: [ROLE_ADMIN], methods: [POST, PATCH, PUT, DELETE] }
+    # API Skills
+             - { path: ^/api/v1/skills$, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/skills/\d+, roles: ROLE_BASE, methods: [GET] }
+             - { path: ^/api/v1/skills.*$, roles: [ROLE_ADMIN], methods: [POST, PATCH, PUT, DELETE] }
+    # API Users
+             - { path: ^/api/v1/users$, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/users/\d+, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/api/v1/users.*$, roles: [ROLE_ADMIN], methods: [POST, PATCH, PUT, DELETE] }
+    # WEB Формы
+             - { path: ^/groups/form-create$, roles: [ ROLE_ADMIN, ROLE_TEACHER ], methods: [ GET, POST ] }
+             - { path: ^/groups/form-update/\d+, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
+             - { path: ^/users$, roles: [ROLE_BASE], methods: [GET] }
+             - { path: ^/users/form-create$, roles: [], methods: [GET, POST] }
+             - { path: ^/users/form-update.*$, roles: [ROLE_ADMIN], methods: [GET, POST] }
+             - { path: ^/users/form-update/\d+, roles: [ROLE_ADMIN], methods: [GET, POST] }
 
 when@test:
     security:

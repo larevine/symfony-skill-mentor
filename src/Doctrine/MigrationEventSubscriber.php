@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Doctrine;
 
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\Common\EventSubscriber;
 use Doctrine\DBAL\Schema\SchemaException;
 use Doctrine\ORM\Tools\Event\GenerateSchemaEventArgs;
 
+#[AsDoctrineListener(event: 'postPersist')]
 class MigrationEventSubscriber implements EventSubscriber
 {
     /**

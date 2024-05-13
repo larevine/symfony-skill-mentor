@@ -26,3 +26,6 @@ services:
     App\Doctrine\MigrationEventSubscriber:
         tags:
             - { name: doctrine.event_subscriber, connection: default }
+    App\Service\Security\Auth\Token\JWTAuthService:
+        arguments:
+            $token_TTL: '%env(JWT_TTL_SEC)%'

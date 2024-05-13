@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Web;
+namespace App\Controller\Web\Form;
 
 use App\Entity\Group;
 use App\Entity\Skill;
@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Service\Builder\GroupBuilderService;
 use App\Service\Form\Type\GroupType;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,7 +28,7 @@ class GroupController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route(path: '/form-create', name: 'create-group', methods: ['GET', 'POST'])]
     #[Route(path: '/form-update/{id}', name: 'update-group', methods: ['GET', 'POST'])]

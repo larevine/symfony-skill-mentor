@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Form\Type;
 
+use App\Entity\Enum\Default\Roles;
 use App\Entity\Enum\UserStatus;
-use App\Entity\Role;
 use App\Entity\Skill;
 use App\Entity\User;
 use App\Service\Form\DataMapper\UserDataMapper;
@@ -13,6 +13,7 @@ use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
+use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -26,11 +27,19 @@ class UserType extends AbstractType
             ->add('email', EmailType::class, [
                 'label' => 'Email пользователя',
                 'attr' => [
-                    'data-time' => time(),
                     'placeholder' => 'Email пользователя',
-                    'class' => 'user-email',
                 ],
-            ])
+            ]);
+        if ($options['is_route_create'] ?? false) {
+            $builder
+                ->add('password', PasswordType::class, [
+                    'label' => 'Пароль пользователя',
+                    'attr' => [
+                        'placeholder' => 'Пароль пользователя',
+                    ],
+                ]);
+        }
+        $builder
             ->add('name', TextType::class, [
                 'label' => 'Имя',
             ])
@@ -48,14 +57,13 @@ class UserType extends AbstractType
                     ],
                     'data' => UserStatus::ACTIVE->toString(),
                 ])
-                ->add('roles', EntityType::class, [
+                ->add('roles', ChoiceType::class, [
                     'label' => 'Роли пользователя',
-                    'class' => Role::class,
-                    'choices' => $options['roles'],
-                    'multiple' => true,
-                    'expanded' => true,
-                    'choice_label' => 'name',
-                    'choice_value' => 'name',
+                    'choices' => [
+                        Roles::ADMIN->value => Roles::ADMIN,
+                        Roles::TEACHER->value => Roles::TEACHER,
+                        Roles::STUDENT->value => Roles::STUDENT,
+                    ],
                 ])
                 ->add('skills', EntityType::class, [
                     'label' => 'Навыки пользователя',
@@ -78,8 +86,8 @@ class UserType extends AbstractType
         $resolver->setDefaults([
             'data_class' => User::class,
             'empty_data' => new User(),
+            'is_route_create' => false,
             'is_route_update' => false,
-            'roles' => [],
             'skills' => [],
         ]);
     }

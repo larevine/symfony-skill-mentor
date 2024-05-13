@@ -8,6 +8,7 @@ use App\DTO\ManageUserDTO;
 use App\Entity\User;
 use App\Manager\UserManager;
 use App\Service\Builder\UserBuilderService;
+use Exception;
 use JMS\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,11 +33,11 @@ class UserController extends AbstractController
         $per_page = $request->query->get('per_page');
         $page = $request->query->get('page');
         $users = $this->user_manager->getUsers($page ?? 0, $per_page ?? 20);
-        $code = empty($users) ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
+        $code = count($users) === 0 ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
 
         return $this->json(
-            ['users' => array_map(static fn(User $user) => $user->toArray(), $users)],
-            $code,
+            data: ['users' => array_map(static fn (User $user) => $user->toArray(), $users)],
+            status: $code,
             context: ['json_encode_options' => JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT],
         );
     }
@@ -52,7 +53,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route(path: '', methods: ['POST'])]
     public function createUserAction(Request $request, UserBuilderService $service): JsonResponse
@@ -60,7 +61,10 @@ class UserController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageUserDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+            ], Response::HTTP_BAD_REQUEST);
         }
         $user_id = $service->saveUserWithRelatedEntities($dto);
         [$data, $code] = $user_id === null ?
@@ -71,7 +75,7 @@ class UserController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route(path: '/{user_id}', requirements: ['user_id' => '\d+'], methods: ['PATCH'])]
     public function updateUserAction(int $user_id, Request $request, UserBuilderService $service): JsonResponse
@@ -83,11 +87,20 @@ class UserController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageUserDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+            ], Response::HTTP_BAD_REQUEST);
         }
         $result = $service->updateUserWithRelatedEntities($user, $dto);
-
-        return new JsonResponse(['success' => $result], $result ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+        return new JsonResponse(
+            data: [
+                'success' => $result
+            ],
+            status: !is_null($result)
+                ? Response::HTTP_OK
+                : Response::HTTP_BAD_REQUEST
+        );
     }
 
     #[Route(path: '/{user_id}', requirements: ['user_id' => '\d+'], methods: ['DELETE'])]
@@ -99,6 +112,11 @@ class UserController extends AbstractController
         }
         $result = $service->deleteUserWithRelatedEntities($user);
 
-        return new JsonResponse(['success' => $result], $result ? Response::HTTP_OK : Response::HTTP_NOT_FOUND);
+        return new JsonResponse(
+            data: ['success' => $result],
+            status: $result
+                ? Response::HTTP_OK
+                : Response::HTTP_NOT_FOUND
+        );
     }
 }

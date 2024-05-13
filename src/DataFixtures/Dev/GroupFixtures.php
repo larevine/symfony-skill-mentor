@@ -12,6 +12,7 @@ use App\Service\Builder\GroupBuilderService;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\OrderedFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Exception;
 
 class GroupFixtures extends Fixture implements OrderedFixtureInterface
 {
@@ -22,7 +23,7 @@ class GroupFixtures extends Fixture implements OrderedFixtureInterface
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function load(ObjectManager $manager): void
     {

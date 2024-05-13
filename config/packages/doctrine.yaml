@@ -8,6 +8,8 @@ doctrine:
 
         profiling_collect_backtrace: '%kernel.debug%'
         use_savepoints: true
+        # Убирает ошибку doctrine_migration_versions при doctrine:schema:validate
+        schema_filter: ~^(?!doctrine_migration_versions)~
     orm:
         auto_generate_proxy_classes: true
         enable_lazy_ghost_objects: true

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Trait;
+namespace App\Entity\Trait;
 
 use DateTimeImmutable;
-use Doctrine\ORM\Mapping as ORM;
 use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
 
-trait EntityTimestampTrait
+trait TimestampTrait
 {
     #[ORM\Column(name: 'created_at', type: Types::DATETIMETZ_IMMUTABLE, nullable: false)]
     private DateTimeImmutable $createdAt;

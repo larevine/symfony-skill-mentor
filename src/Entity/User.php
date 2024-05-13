@@ -4,23 +4,26 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Entity\Enum\Default\Roles;
 use App\Entity\Enum\UserStatus;
+use App\Entity\Trait\TimestampTrait;
 use App\Repository\UserRepository;
-use App\Trait\EntityTimestampTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use JetBrains\PhpStorm\ArrayShape;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Table(name: '`users`')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Index(name: 'users__email__idx', columns: ['email'])]
 #[ORM\UniqueConstraint(name: 'users__email__uq', columns: ['email'])]
 #[ORM\HasLifecycleCallbacks]
-class User
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    use EntityTimestampTrait;
+    use TimestampTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
@@ -30,17 +33,30 @@ class User
     #[ORM\Column(name: 'email', type: Types::STRING, length: 150, nullable: false)]
     private string $email;
 
+    #[ORM\Column(type: 'string', length: 120, nullable: false)]
+    private string $password;
+
+    #[ORM\Column(type: 'string', length: 32, unique: true, nullable: true)]
+    private ?string $token = null;
+
     #[ORM\Column(name: 'name', type: Types::STRING, length: 120, nullable: false)]
     private string $name;
 
     #[ORM\Column(name: 'surname', type: Types::STRING, length: 120, nullable: false)]
     private string $surname;
 
-    #[ORM\Column(name: 'status', type: Types::SMALLINT, nullable: false, enumType: UserStatus::class, options: ['default' => UserStatus::ACTIVE])]
+    #[ORM\Column(
+        name: 'status',
+        type: Types::SMALLINT,
+        nullable: false,
+        enumType: UserStatus::class,
+        options: ['default' => UserStatus::ACTIVE]
+    )]
     private UserStatus $status = UserStatus::ACTIVE;
 
-    #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'user')]
-    private Collection $roles;
+    /** @var array<int, string> */
+    #[ORM\Column(type: 'json', length: 1024, nullable: false)]
+    private array $roles = [];
 
     #[ORM\OneToMany(targetEntity: UserSkill::class, mappedBy: 'user')]
     private Collection $skills;
@@ -50,7 +66,6 @@ class User
 
     public function __construct()
     {
-        $this->roles = new ArrayCollection();
         $this->skills = new ArrayCollection();
         $this->groups = new ArrayCollection();
     }
@@ -68,6 +83,26 @@ class User
     public function getEmail(): string
     {
         return $this->email;
+    }
+
+    public function setPassword(string $password): void
+    {
+        $this->password = $password;
+    }
+
+    public function getPassword(): string
+    {
+        return $this->password;
+    }
+
+    public function getToken(): ?string
+    {
+        return $this->token;
+    }
+
+    public function setToken(?string $token): void
+    {
+        $this->token = $token;
     }
 
     public function setName(string $name): void
@@ -105,18 +140,23 @@ class User
         return $this->status;
     }
 
-    public function addRole(UserRole $role): void
+    /**
+     * @param string[] $roles
+     */
+    public function setRoles(array $roles): void
     {
-        if (!$this->roles->contains($role)) {
-            $this->roles->add($role);
-        }
+        $this->roles = $roles;
     }
 
-    public function removeRole(UserRole $role): void
+    /**
+     * @return string[]
+     */
+    public function getRoles(): array
     {
-        if ($this->roles->contains($role)) {
-            $this->roles->removeElement($role);
-        }
+        $roles = $this->roles;
+        $roles[] = Roles::BASE->value;
+
+        return array_unique($roles);
     }
 
     public function addGroup(GroupUser $group): void
@@ -148,16 +188,6 @@ class User
     }
 
     /**
-     * @return array<UserRole>
-     */
-    public function getRoles(): array
-    {
-        return $this->roles->map(function (UserRole $role) {
-            return $role->getRole();
-        })->toArray();
-    }
-
-    /**
      * @return array<UserSkill>
      */
     public function getSkills(): array
@@ -178,14 +208,15 @@ class User
     }
 
     #[ArrayShape([
-            'id' => 'int',
-            'email' => 'string',
-            'fullname' => 'string',
-            'created_at' => 'string',
-            'updated_at' => 'string',
-            'roles' => 'string[]',
-            'groups' => 'string[]',
-            'skills' => 'string[]',
+        'id' => 'int',
+        'email' => 'string',
+        'fullname' => 'string',
+        'status' => 'string',
+        'created_at' => 'string',
+        'updated_at' => 'string',
+        'roles' => 'string[]',
+        'groups' => 'string[]',
+        'skills' => 'string[]',
     ])]
     public function toArray(): array
     {
@@ -193,27 +224,32 @@ class User
             'id' => $this->id,
             'email' => $this->email,
             'fullname' => $this->getFullName(),
-            'status' => $this->getStatus(),
+            'status' => $this->getStatus()->toString(),
             'created_at' => $this->createdAt->format('Y-m-d H:i:s'),
             'updated_at' => $this->updatedAt->format('Y-m-d H:i:s'),
-            'roles' => array_map(
-                static fn(UserRole $role) => [
-                    $role->getRole()->getName(),
-                ],
-                $this->roles->toArray()
-            ),
+            'roles' => $this->getRoles(),
             'groups' => array_map(
-                static fn(GroupUser $group) => [
+                static fn (GroupUser $group) => [
                     $group->getGroup()->getName(),
                 ],
                 $this->groups->toArray()
             ),
             'skills' => array_map(
-                static fn(UserSkill $skill) => [
-                    $skill->getGroup()->getName(),
+                static fn (UserSkill $skill) => [
+                    $skill->getSkill()->getName(),
                 ],
                 $this->skills->toArray()
             ),
         ];
+    }
+
+    public function eraseCredentials(): void
+    {
+        // TODO: Implement eraseCredentials() method.
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
     }
 }

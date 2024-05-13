@@ -31,9 +31,12 @@ class SkillController extends AbstractController
         $per_page = $request->query->get('per_page');
         $page = $request->query->get('page');
         $skills = $this->skill_manager->getSkills($page ?? 0, $per_page ?? 20);
-        $code = empty($skills) ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
+        $code = count($skills) === 0 ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
 
-        return new JsonResponse(['skills' => array_map(static fn(Skill $skill) => $skill->toArray(), $skills)], $code);
+        return new JsonResponse(
+            data: ['skills' => array_map(static fn (Skill $skill) => $skill->toArray(), $skills)],
+            status: $code
+        );
     }
 
     #[Route(path: '/{skill_id}', requirements: ['skill_id' => '\d+'], methods: ['GET'])]
@@ -52,7 +55,10 @@ class SkillController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageSkillDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+            ], Response::HTTP_BAD_REQUEST);
         }
         $skill_id = $this->skill_manager->saveSkillFromDTO(new Skill(), $dto);
         [$data, $code] = $skill_id === null ?
@@ -72,7 +78,13 @@ class SkillController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageSkillDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                data: [
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+                ],
+                status: Response::HTTP_BAD_REQUEST
+            );
         }
         $result = $this->skill_manager->saveSkillFromDTO($skill, $dto);
 
@@ -88,6 +100,11 @@ class SkillController extends AbstractController
         }
         $result = $this->skill_manager->deleteSkill($skill);
 
-        return new JsonResponse(['success' => $result], $result ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+        return new JsonResponse(
+            data: ['success' => $result],
+            status: $result
+                ? Response::HTTP_OK
+                : Response::HTTP_BAD_REQUEST
+        );
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Entity\Enum\SkillLevel;
+use App\Entity\Trait\TimestampTrait;
 use App\Repository\GroupRepository;
-use App\Trait\EntityTimestampTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -20,7 +20,7 @@ use JetBrains\PhpStorm\ArrayShape;
 #[ORM\HasLifecycleCallbacks]
 class Group
 {
-    use EntityTimestampTrait;
+    use TimestampTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]

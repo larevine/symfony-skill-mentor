@@ -29,6 +29,9 @@ RUN apk update \
         wget \
         bash
 
+RUN pecl install xdebug && docker-php-ext-enable xdebug;
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
@@ -48,3 +51,5 @@ RUN pecl channel-update pecl.php.net \
     && rm -rf /tmp/pear \
     && echo "extension=redis.so" > /usr/local/etc/php/conf.d/redis.ini \
     && echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini
+
+COPY ./.bashrc /root/.bashrc

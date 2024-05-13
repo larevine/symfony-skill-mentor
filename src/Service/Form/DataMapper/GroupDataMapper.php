@@ -9,13 +9,14 @@ use App\Entity\User;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\FormInterface;
+use Traversable;
 
 readonly class GroupDataMapper implements DataMapperInterface
 {
     /**
      * @inheritDoc
      */
-    public function mapDataToForms(mixed $viewData, \Traversable $forms): void
+    public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
         if (null === $viewData) {
             return;
@@ -34,7 +35,7 @@ readonly class GroupDataMapper implements DataMapperInterface
     /**
      * @inheritDoc
      */
-    public function mapFormsToData(\Traversable $forms, mixed &$viewData): void
+    public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);

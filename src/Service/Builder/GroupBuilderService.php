@@ -9,6 +9,7 @@ use App\Entity\Group;
 use App\Manager\GroupManager;
 use App\Manager\GroupUserManager;
 use App\Manager\SkillManager;
+use Exception;
 
 readonly class GroupBuilderService
 {
@@ -20,7 +21,7 @@ readonly class GroupBuilderService
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function saveGroupWithRelatedEntities(ManageGroupDTO $group_dto): ?int
     {
@@ -35,7 +36,7 @@ readonly class GroupBuilderService
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function updateGroupWithRelatedEntities(Group $group, ManageGroupDTO $group_dto): bool
     {

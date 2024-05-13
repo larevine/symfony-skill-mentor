@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\DTO;
 
 use App\Entity\Enum\UserStatus;
-use App\Entity\Role;
 use App\Entity\Skill;
 use JMS\Serializer\Annotation\Type;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +18,8 @@ class ManageUserDTO
         #[Assert\NotBlank]
         #[Assert\Length(max: 150)]
         public string $email = '',
+        #[Assert\Length(max: 120)]
+        public ?string $password = null,
         #[Assert\NotBlank]
         #[Assert\Length(max: 120)]
         public string $name = '',
@@ -40,13 +41,11 @@ class ManageUserDTO
     {
         return new self(...[
             'email' => $user->getEmail(),
+            'password' => $user->getPassword(),
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
             'status' => $user->getStatus(),
-            'roles' => array_map(
-                static fn (Role $role) => $role->getName(),
-                $user->getRoles()
-            ),
+            'roles' => $user->getRoles(),
             'skill_ids' => array_map(
                 static function (Skill $skill) {
                     return $skill->getId();
@@ -61,6 +60,7 @@ class ManageUserDTO
     {
         return new self(
             email: $request->request->get('email') ?? $request->query->get('email'),
+            password: $request->request->get('password') ?? $request->query->get('password'),
             name: $request->request->get('name') ?? $request->query->get('name'),
             surname: $request->request->get('surname') ?? $request->query->get('surname'),
             status: $request->request->get('status') ?? $request->query->get('status') ?? UserStatus::ACTIVE,

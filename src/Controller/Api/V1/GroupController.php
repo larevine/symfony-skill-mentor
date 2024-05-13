@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Controller\Api\V1;
 
 use App\DTO\ManageGroupDTO;
+use App\Entity\Group;
 use App\Manager\GroupManager;
 use App\Service\Builder\GroupBuilderService;
+use Exception;
 use JMS\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,9 +33,12 @@ class GroupController extends AbstractController
         $per_page = $request->query->get('per_page');
         $page = $request->query->get('page');
         $groups = $this->group_manager->getGroups($page ?? 0, $per_page ?? 20);
-        $code = empty($groups) ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
+        $code = count($groups) === 0 ? Response::HTTP_NO_CONTENT : Response::HTTP_OK;
 
-        return new JsonResponse(['groups' => array_map(static fn(\App\Entity\Group $group) => $group->toArray(), $groups)], $code);
+        return new JsonResponse(
+            data: ['groups' => array_map(static fn (Group $group) => $group->toArray(), $groups)],
+            status: $code
+        );
     }
 
     #[Route(path: '/{group_id}', requirements: ['group_id' => '\d+'], methods: ['GET'])]
@@ -47,7 +52,7 @@ class GroupController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route(path: '', methods: ['POST'])]
     public function createGroupAction(Request $request, GroupBuilderService $service): JsonResponse
@@ -55,7 +60,10 @@ class GroupController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageGroupDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+            ], Response::HTTP_BAD_REQUEST);
         }
         $group_id = $service->saveGroupWithRelatedEntities($dto);
         [$data, $code] = $group_id === null ?
@@ -66,7 +74,7 @@ class GroupController extends AbstractController
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     #[Route(path: '/{group_id}', requirements: ['group_id' => '\d+'], methods: ['PATCH'])]
     public function updateGroupAction(int $group_id, Request $request, GroupBuilderService $service): JsonResponse
@@ -78,11 +86,19 @@ class GroupController extends AbstractController
         $dto = $this->serializer->deserialize($request->getContent(), ManageGroupDTO::class, 'json');
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {
-            return new JsonResponse(['success' => false, 'errors' => $this->serializer->toArray($violations)], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $this->serializer->toArray($violations)
+            ], Response::HTTP_BAD_REQUEST);
         }
         $result = $service->updateGroupWithRelatedEntities($group, $dto);
 
-        return new JsonResponse(['success' => $result], $result ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+        return new JsonResponse(
+            data: ['success' => $result],
+            status: $result
+                ? Response::HTTP_OK
+                : Response::HTTP_BAD_REQUEST
+        );
     }
 
     #[Route(path: '/{group_id}', requirements: ['group_id' => '\d+'], methods: ['DELETE'])]

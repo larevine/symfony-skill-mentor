@@ -9,6 +9,7 @@
         "ext-iconv": "*",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "doctrine/orm": "^3.1",
+        "friendsofsymfony/rest-bundle": "^3.7",
         "jms/serializer-bundle": "^5.4",
         "lexik/jwt-authentication-bundle": "^2.21",
         "symfony/console": "6.4.*",
@@ -16,6 +17,7 @@
         "symfony/flex": "^2",
         "symfony/form": "6.4.*",
         "symfony/framework-bundle": "6.4.*",
+        "symfony/monolog-bundle": "^3.10",
         "symfony/runtime": "6.4.*",
         "symfony/security-bundle": "*",
         "symfony/serializer": "6.4.*",
@@ -23,6 +25,14 @@
         "symfony/validator": "6.4.*",
         "symfony/webpack-encore-bundle": "^2.1",
         "symfony/yaml": "6.4.*"
+    },
+    "require-dev": {
+        "doctrine/doctrine-fixtures-bundle": "^3.6",
+        "friendsofphp/php-cs-fixer": "*",
+        "squizlabs/php_codesniffer": "3.*",
+        "symfony/maker-bundle": "^1.59",
+        "symfony/stopwatch": "6.4.*",
+        "symfony/web-profiler-bundle": "6.4.*"
     },
     "config": {
         "allow-plugins": {
@@ -71,12 +81,5 @@
             "allow-contrib": false,
             "require": "6.4.*"
         }
-    },
-    "require-dev": {
-        "doctrine/doctrine-fixtures-bundle": "^3.6",
-        "squizlabs/php_codesniffer": "3.*",
-        "symfony/maker-bundle": "^1.59",
-        "symfony/stopwatch": "6.4.*",
-        "symfony/web-profiler-bundle": "6.4.*"
     }
 }
