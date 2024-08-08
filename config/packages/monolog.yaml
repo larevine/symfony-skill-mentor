@@ -2,6 +2,26 @@ monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
 
+services:
+    monolog.formatter.app_formatter:
+        class: Monolog\Formatter\LineFormatter
+        arguments:
+            - "[%%level_name%%]: [%%datetime%%] %%message%%\n"
+
+    Psr\Log\NullLogger:
+        class: Psr\Log\NullLogger
+
+    http_client_without_logs:
+        class: Symfony\Component\HttpClient\CurlHttpClient
+        calls:
+            - [setLogger, ['@Psr\Log\NullLogger']]
+
+    Symfony\Bridge\Monolog\Handler\ElasticsearchLogstashHandler:
+        arguments:
+            - 'http://elasticsearch:9200'
+            - 'monolog'
+            - '@http_client_without_logs'
+
 when@dev:
     monolog:
         handlers:

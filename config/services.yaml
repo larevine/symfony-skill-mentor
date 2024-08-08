@@ -4,11 +4,13 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Добавление параметров, например
+    # app.some_parameter: 'some_value'
 
 services:
     # default configuration for services in *this* file
     _defaults:
-        autowire: true      # Automatically injects dependencies in your services.
+        autowire: true      # Включает автоматическую инъекцию зависимостей.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
     # makes classes in src/ available to be used as services
@@ -17,15 +19,151 @@ services:
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
-            - '../src/Entity/'
+            - '../src/Domain/Entity/'
             - '../src/Kernel.php'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
 
-    App\Doctrine\MigrationEventSubscriber:
+    App\Application\Doctrine\PostGenerateSchemaEventListener:
         tags:
             - { name: doctrine.event_subscriber, connection: default }
-    App\Service\Security\Auth\Token\JWTAuthService:
+
+    # Авторизация
+    App\Application\Security\Auth\Token\JWTAuthService:
         arguments:
+            $user_service: '@App\Application\Service\UserService'
             $token_TTL: '%env(JWT_TTL_SEC)%'
+    App\Application\Security\Auth\Token\ApiAuthService:
+        arguments:
+            $user_service: '@App\Application\Service\UserService'
+
+    # Сервисы приложения
+    App\Application\Interface\IGroupService:
+        class: App\Application\Service\GroupService
+    App\Application\Interface\IUserService:
+        class: App\Application\Service\UserService
+    App\Application\Interface\ISkillService:
+        class: App\Application\Service\SkillService
+    App\Application\Interface\IUserSkillService:
+        class: App\Application\Service\UserSkillService
+    App\Application\Interface\IGroupUserService:
+        class: App\Application\Service\GroupUserService
+    App\Application\Interface\Management\IUserManagementService:
+        class: App\Application\Service\Management\UserManagementService
+    App\Application\Interface\Management\ISkillManagementService:
+        class: App\Application\Service\Management\SkillManagementService
+    App\Application\Interface\Management\IGroupManagementService:
+        class: App\Application\Service\Management\GroupManagementService
+    App\Application\Service\UserService:
+        arguments:
+            $user_repository: '@App\Infrastructure\Repository\Doctrine\UserRepository'
+    App\Application\Service\SkillService:
+        arguments:
+            $skill_repository: '@App\Infrastructure\Repository\Doctrine\SkillRepository'
+    App\Application\Service\Management\SkillManagementService:
+        arguments:
+            $skill_service: '@App\Application\Service\SkillService'
+    App\Application\Service\GroupService:
+        arguments:
+            $group_repository: '@App\Infrastructure\Repository\Doctrine\GroupRepository'
+    App\Application\Service\Management\GroupManagementService:
+        arguments:
+            $group_service: '@App\Application\Service\GroupService'
+            $skill_service: '@App\Application\Service\SkillService'
+            $group_user_service: '@App\Application\Service\GroupUserService'
+    App\Application\Service\UserSkillService:
+        arguments:
+            $user_skill_repository: '@App\Infrastructure\Repository\Doctrine\UserSkillRepository'
+    App\Application\Service\GroupUserService:
+        arguments:
+            $group_user_repository: '@App\Infrastructure\Repository\Doctrine\GroupUserRepository'
+            $user_service: '@App\Application\Service\UserService'
+    App\Application\Service\Management\UserManagementService:
+        arguments:
+            $user_service: '@App\Application\Service\UserService'
+            $skill_service: '@App\Application\Service\SkillService'
+            $user_skill_service: '@App\Application\Service\UserSkillService'
+
+    # Контроллеры
+    App\Interface\Controller\Api\V1\UserController:
+        arguments:
+            $user_service: '@App\Application\Service\UserService'
+            $user_management_service: '@App\Application\Service\Management\UserManagementService'
+    App\Interface\Controller\Api\V1\SkillController:
+        arguments:
+            $skill_service: '@App\Application\Service\SkillService'
+            $skill_management_service: '@App\Application\Service\Management\SkillManagementService'
+    App\Interface\Controller\Api\V1\GroupController:
+        arguments:
+            $group_service: '@App\Application\Service\GroupService'
+
+    # Просто локальное тестирование зависимостей
+
+    # передаем сервис в качестве аргумента
+    App\Interface\Controller\HelloWorldController:
+        arguments:
+            $format_service: '@list_formatter'
+
+    # Formatters
+
+    # Символ @ в конфигурации сервисов Symfony указывает на то, что сервис должен быть создан с использованием
+    # инстанса класса, находящегося в контейнере, а не как статический метод. Это позволяет использовать зависимости
+    # и управление жизненным циклом объектов, что делает систему более гибкой и масштабируемой.
+
+    # используем в CompilerPass по тегу
+    strong_formatter:
+        class: App\Application\Service\HelloWorld\FormatService
+        factory: [ 'App\Application\Service\HelloWorld\FormatServiceFactory', 'strongFormatService' ]
+        tags: [ 'app.formatter_service' ]
+
+    # используем в CompilerPass по тегу
+    cite_formatter:
+        class: App\Application\Service\HelloWorld\FormatService
+        factory: [ '@App\Application\Service\HelloWorld\FormatServiceFactory', 'citeFormatService' ]
+        tags: [ 'app.formatter_service' ]
+
+    # не используется, так как нет тега и не вызывается
+    main_header_formatter:
+        class: App\Application\Service\HelloWorld\FormatService
+        factory: [ '@App\Application\Service\HelloWorld\FormatServiceFactory', 'headerFormatService' ]
+        arguments: [ 1 ]
+
+    # используется как первый сервис в HelloWorldController, второй добавляется в CompilerPass
+    list_formatter:
+        class: App\Application\Service\HelloWorld\FormatService
+        calls:
+            - [ setTag, [ 'ol' ] ]
+
+    # используем в CompilerPass по тегу
+    list_item_formatter:
+        class: App\Application\Service\HelloWorld\FormatService
+        calls:
+            - [ setTag, [ 'li' ] ]
+        tags: [ 'app.formatter_service' ]
+
+    # Greeters
+
+    # используем в CompilerPass по тегу
+    hello_greeter:
+        class: App\Application\Service\HelloWorld\GreeterService
+        arguments:
+            $greet: 'Hello'
+        tags:
+            - { name: 'app.greeter_service', priority: 3 }
+
+    # используем в CompilerPass по тегу
+    greetings_greeter:
+        class: App\Application\Service\HelloWorld\GreeterService
+        arguments:
+            $greet: 'Greetings'
+        tags:
+            - { name: 'app.greeter_service', priority: 2 }
+
+    # используем в CompilerPass по тегу
+    hi_greeter:
+        class: App\Application\Service\HelloWorld\GreeterService
+        arguments:
+            $greet: 'Hi'
+        tags:
+            - { name: 'app.greeter_service', priority: 1 }

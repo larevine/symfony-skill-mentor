@@ -7,32 +7,44 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "api-platform/core": "^4.0",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "doctrine/orm": "^3.1",
+        "friendsofsymfony/elastica-bundle": "^6.4",
         "friendsofsymfony/rest-bundle": "^3.7",
         "jms/serializer-bundle": "^5.4",
         "lexik/jwt-authentication-bundle": "^2.21",
-        "symfony/console": "6.4.*",
-        "symfony/dotenv": "6.4.*",
+        "nelmio/api-doc-bundle": "^4.33",
+        "php-amqplib/rabbitmq-bundle": "^2.17",
+        "phpdocumentor/reflection-docblock": "^5.6",
+        "slickdeals/statsd": "^3.2",
+        "symfony/console": "7.1.*",
+        "symfony/dotenv": "7.1.*",
         "symfony/flex": "^2",
-        "symfony/form": "6.4.*",
-        "symfony/framework-bundle": "6.4.*",
+        "symfony/form": "7.0.*",
+        "symfony/framework-bundle": "7.1.*",
+        "symfony/http-client": "7.1.*",
+        "symfony/lock": "7.1.*",
         "symfony/monolog-bundle": "^3.10",
-        "symfony/runtime": "6.4.*",
+        "symfony/property-info": "7.1.*",
+        "symfony/routing": "7.1.*",
+        "symfony/runtime": "7.1.*",
         "symfony/security-bundle": "*",
-        "symfony/serializer": "6.4.*",
-        "symfony/twig-bundle": "6.4.*",
-        "symfony/validator": "6.4.*",
+        "symfony/serializer": "7.1.*",
+        "symfony/twig-bundle": "7.1.*",
+        "symfony/validator": "7.1.*",
         "symfony/webpack-encore-bundle": "^2.1",
-        "symfony/yaml": "6.4.*"
+        "symfony/yaml": "7.1.*",
+        "webonyx/graphql-php": "^15.18"
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^3.6",
         "friendsofphp/php-cs-fixer": "*",
         "squizlabs/php_codesniffer": "3.*",
         "symfony/maker-bundle": "^1.59",
-        "symfony/stopwatch": "6.4.*",
-        "symfony/web-profiler-bundle": "6.4.*"
+        "symfony/phpunit-bridge": "^7.1",
+        "symfony/stopwatch": "7.1.*",
+        "symfony/web-profiler-bundle": "7.1.*"
     },
     "config": {
         "allow-plugins": {
@@ -79,7 +91,7 @@
     "extra": {
         "symfony": {
             "allow-contrib": false,
-            "require": "6.4.*"
+            "require": "7.1.*"
         }
     }
 }

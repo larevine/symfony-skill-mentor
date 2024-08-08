@@ -11,18 +11,18 @@ final class Version20240706201240 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'hw4 добавил поле token в таблицу users';
+        return 'Добавление поля token в таблицу users';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql('ALTER TABLE users ADD token VARCHAR(32) DEFAULT NULL');
-        $this->addSql('CREATE UNIQUE INDEX UNIQ_1483A5E95F37A13B ON users (token)');
+        $this->addSql('CREATE UNIQUE INDEX users__token__uq ON users (token)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP INDEX UNIQ_1483A5E95F37A13B');
-        $this->addSql('ALTER TABLE "users" DROP token');
+        $this->addSql('DROP INDEX users__token__uq');
+        $this->addSql('ALTER TABLE users DROP token');
     }
 }
