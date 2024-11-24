@@ -4,8 +4,11 @@ b:
 up:
 	docker compose up -d
 
-down:
+d:
 	docker compose down --remove-orphans
 
 sh:
-	docker exec -it php sh
+	docker exec -it otus-php-1 sh
+
+ps:
+	docker compose ps

@@ -4,81 +4,89 @@ declare(strict_types=1);
 
 namespace App\Domain\Entity;
 
-use App\Domain\Entity\Trait\TimestampTrait;
-use App\Domain\ValueObject\RolesEnum;
-use App\Domain\ValueObject\UserStatusEnum;
-use App\Infrastructure\Repository\Doctrine\UserRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
+use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\PersonName;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use JetBrains\PhpStorm\ArrayShape;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-#[ORM\Table(name: '`users`')]
-#[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Index(name: 'users__email__idx', columns: ['email'])]
-#[ORM\UniqueConstraint(name: 'users__email__uq', columns: ['email'])]
-#[ORM\UniqueConstraint(name: 'users__token__uq', columns: ['token'])]
+#[ORM\Entity]
+#[ORM\Table(name: 'users')]
+#[ORM\InheritanceType('SINGLE_TABLE')]
+#[ORM\DiscriminatorColumn(name: 'type', type: 'string')]
+#[ORM\DiscriminatorMap(['teacher' => Teacher::class, 'student' => Student::class])]
+#[ORM\Index(name: 'users__name__idx', columns: ['first_name', 'last_name'])]
+#[ORM\Index(name: 'users__type__idx', columns: ['type'])]
 #[ORM\HasLifecycleCallbacks]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+abstract class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    use TimestampTrait;
-
     #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[ORM\Column(name: 'id', type: Types::BIGINT, unique: true)]
-    private int|string $id;
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $id = null;
 
-    #[ORM\Column(name: 'email', type: Types::STRING, length: 150, nullable: false)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
+    private string $first_name;
+
+    #[ORM\Column(type: Types::STRING, length: 255)]
+    private string $last_name;
+
+    #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
     private string $email;
 
-    #[ORM\Column(type: 'string', length: 120, nullable: false)]
-    private string $password;
+    private ?PersonName $name = null;
+    private ?Email $email_vo = null;
 
-    #[ORM\Column(type: 'string', length: 32, unique: true, nullable: true)]
-    private ?string $token = null;
+    #[ORM\Column]
+    protected array $roles = [];
 
-    #[ORM\Column(name: 'name', type: Types::STRING, length: 120, nullable: false)]
-    private string $name;
+    #[ORM\Column]
+    protected string $password;
 
-    #[ORM\Column(name: 'surname', type: Types::STRING, length: 120, nullable: false)]
-    private string $surname;
-
-    #[ORM\Column(
-        name: 'status',
-        type: Types::SMALLINT,
-        nullable: false,
-        enumType: UserStatusEnum::class,
-        options: ['default' => UserStatusEnum::ACTIVE]
-    )]
-    private UserStatusEnum $status = UserStatusEnum::ACTIVE;
-
-    /** @var array<int, string> */
-    #[ORM\Column(type: 'json', length: 1024, nullable: false)]
-    private array $roles = [];
-
-    #[ORM\OneToMany(targetEntity: UserSkill::class, mappedBy: 'user')]
-    private Collection $skills;
-
-    #[ORM\OneToMany(targetEntity: GroupUser::class, mappedBy: 'user')]
-    private Collection $groups;
-
-    public function __construct()
-    {
-        $this->skills = new ArrayCollection();
-        $this->groups = new ArrayCollection();
+    public function __construct(
+        string $first_name,
+        string $last_name,
+        string $email,
+        array $roles = [],
+        string $password = '',
+    ) {
+        // Сохраняем значения для Doctrine
+        $this->first_name = $first_name;
+        $this->last_name = $last_name;
+        $this->email = $email;
+        $this->roles = $roles;
+        $this->password = $password;
     }
 
-    public function getId(): int
+    #[ORM\PostLoad]
+    public function initializeValueObjects(): void
+    {
+        $this->name = new PersonName($this->first_name, $this->last_name);
+        $this->email_vo = new Email($this->email);
+    }
+
+    public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function setEmail(string $email): void
+    public function getFirstName(): string
     {
-        $this->email = $email;
+        return $this->first_name;
+    }
+
+    public function getLastName(): string
+    {
+        return $this->last_name;
+    }
+
+    public function getFullName(): string
+    {
+        if (!isset($this->name)) {
+            $this->name = new PersonName($this->first_name, $this->last_name);
+        }
+        return $this->name->getFullName();
     }
 
     public function getEmail(): string
@@ -86,9 +94,69 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->email;
     }
 
-    public function setPassword(string $password): void
+    public function getName(): PersonName
     {
-        $this->password = $password;
+        if (!isset($this->name)) {
+            $this->name = new PersonName($this->first_name, $this->last_name);
+        }
+        return $this->name;
+    }
+
+    public function getEmailVO(): Email
+    {
+        if (!isset($this->email_vo)) {
+            $this->email_vo = new Email($this->email);
+        }
+        return $this->email_vo;
+    }
+
+    public function updateName(PersonName $name): void
+    {
+        $this->name = $name;
+        $this->first_name = $name->getFirstName();
+        $this->last_name = $name->getLastName();
+    }
+
+    public function updateEmail(Email $email): void
+    {
+        $this->email_vo = $email;
+        $this->email = $email->getValue();
+    }
+
+    public function setFirstName(string $first_name): void
+    {
+        $this->first_name = $first_name;
+        $this->name = new PersonName($first_name, $this->last_name);
+    }
+
+    public function setLastName(string $last_name): void
+    {
+        $this->last_name = $last_name;
+        $this->name = new PersonName($this->first_name, $last_name);
+    }
+
+    public function setEmail(string $email): void
+    {
+        $this->email = $email;
+        $this->email_vo = new Email($email);
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->email;
+    }
+
+    public function getRoles(): array
+    {
+        $roles = $this->roles;
+        $roles[] = 'ROLE_USER';
+
+        return array_unique($roles);
+    }
+
+    public function setRoles(array $roles): void
+    {
+        $this->roles = $roles;
     }
 
     public function getPassword(): string
@@ -96,161 +164,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->password;
     }
 
-    public function getToken(): ?string
+    public function setPassword(string $password): void
     {
-        return $this->token;
-    }
-
-    public function setToken(?string $token): void
-    {
-        $this->token = $token;
-    }
-
-    public function setName(string $name): void
-    {
-        $this->name = $name;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getFullName(): string
-    {
-        return $this->name . ' ' . $this->surname;
-    }
-
-    public function getSurname(): string
-    {
-        return $this->surname;
-    }
-
-    public function setSurname(string $surname): void
-    {
-        $this->surname = $surname;
-    }
-
-    public function setStatus(UserStatusEnum $status): void
-    {
-        $this->status = $status;
-    }
-
-    public function getStatus(): UserStatusEnum
-    {
-        return $this->status;
-    }
-
-    /**
-     * @param string[] $roles
-     */
-    public function setRoles(array $roles): void
-    {
-        $this->roles = $roles;
-    }
-
-    /**
-     * @return string[]
-     */
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        $roles[] = RolesEnum::BASE->value;
-
-        return array_unique($roles);
-    }
-
-    public function addGroup(GroupUser $group): void
-    {
-        if (!$this->groups->contains($group)) {
-            $this->groups->add($group);
-        }
-    }
-
-    public function removeGroup(GroupUser $group): void
-    {
-        if ($this->groups->contains($group)) {
-            $this->groups->removeElement($group);
-        }
-    }
-
-    public function addSkill(UserSkill $skill): void
-    {
-        if (!$this->skills->contains($skill)) {
-            $this->skills->add($skill);
-        }
-    }
-
-    public function removeSkill(UserSkill $skill): void
-    {
-        if ($this->skills->contains($skill)) {
-            $this->skills->removeElement($skill);
-        }
-    }
-
-    /**
-     * @return array<UserSkill>
-     */
-    public function getSkills(): array
-    {
-        return $this->skills->map(function (UserSkill $skill) {
-            return $skill->getSkill();
-        })->toArray();
-    }
-
-    /**
-     * @return array<GroupUser>
-     */
-    public function getGroups(): array
-    {
-        return $this->groups->map(function (GroupUser $group) {
-            return $group->getGroup();
-        })->toArray();
-    }
-
-    #[ArrayShape([
-        'id' => 'int',
-        'email' => 'string',
-        'fullname' => 'string',
-        'status' => 'string',
-        'created_at' => 'string',
-        'updated_at' => 'string',
-        'roles' => 'string[]',
-        'groups' => 'string[]',
-        'skills' => 'string[]',
-    ])]
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'email' => $this->email,
-            'fullname' => $this->getFullName(),
-            'status' => $this->getStatus()->toString(),
-            'created_at' => $this->createdAt->format('Y-m-d H:i:s'),
-            'updated_at' => $this->updatedAt->format('Y-m-d H:i:s'),
-            'roles' => $this->getRoles(),
-            'groups' => array_map(
-                static fn (GroupUser $group) => [
-                    $group->getGroup()->getName(),
-                ],
-                $this->groups->toArray()
-            ),
-            'skills' => array_map(
-                static fn (UserSkill $skill) => [
-                    $skill->getSkill()->getName(),
-                ],
-                $this->skills->toArray()
-            ),
-        ];
+        $this->password = $password;
     }
 
     public function eraseCredentials(): void
     {
-        // TODO: Implement eraseCredentials() method.
-    }
-
-    public function getUserIdentifier(): string
-    {
-        return $this->email;
     }
 }

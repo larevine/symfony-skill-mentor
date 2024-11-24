@@ -5,46 +5,37 @@ declare(strict_types=1);
 namespace App\Infrastructure\Repository\Doctrine;
 
 use App\Domain\Entity\Skill;
-use App\Domain\Repository\ISkillRepository;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
+use App\Domain\Repository\SkillRepositoryInterface;
 
-class SkillRepository extends EntityRepository implements ISkillRepository
+class SkillRepository extends AbstractBaseRepository implements SkillRepositoryInterface
 {
-    public function __construct(protected EntityManagerInterface $em)
+    public function findById(int $id): ?Skill
     {
-        parent::__construct($em, $em->getClassMetadata(Skill::class));
-    }
-
-    /**
-     * @return Skill[]
-     */
-    public function findPaginated(int $page, int $per_page): array
-    {
-        $qb = $this->em->getRepository(Skill::class)
-            ->createQueryBuilder('u')
-            ->orderBy('u.id', 'DESC')
-            ->setFirstResult(($page - 1) * $per_page)
-            ->setMaxResults($per_page);
-
-        return $qb->getQuery()->getResult();
+        return $this->find($id);
     }
 
     public function findByName(string $name): ?Skill
     {
-        return $this->em->getRepository(Skill::class)
-            ->findOneBy(['name' => $name]);
+        return $this->findOneBy(['name' => $name]);
     }
 
-    public function save(Skill $skill): void
+    public function findByTeacherId(int $teacher_id): array
     {
-        $this->em->persist($skill);
-        $this->em->flush();
+        return $this->createQueryBuilder('s')
+            ->join('s.teachers', 't')
+            ->where('t.id = :teacher_id')
+            ->setParameter('teacher_id', $teacher_id)
+            ->getQuery()
+            ->getResult();
     }
 
-    public function delete(Skill $skill): void
+    public function findByStudentId(int $student_id): array
     {
-        $this->em->remove($skill);
-        $this->em->flush();
+        return $this->createQueryBuilder('s')
+            ->join('s.students', 'st')
+            ->where('st.id = :student_id')
+            ->setParameter('student_id', $student_id)
+            ->getQuery()
+            ->getResult();
     }
 }

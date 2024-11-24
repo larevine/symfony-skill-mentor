@@ -1,0 +1,65 @@
+{% use "form_div_layout.html.twig" %}
+
+{# Improve form row rendering #}
+{% block form_row -%}
+    {% set row_attr = row_attr|merge({
+        class: (row_attr.class|default('') ~ ' form-group mb-3')|trim
+    }) %}
+    
+    <div {% with {attr: row_attr} %}{{ block('attributes') }}{% endwith %}>
+        {{- form_label(form) -}}
+        {{- form_widget(form) -}}
+        {{- form_help(form) -}}
+        {{- form_errors(form) -}}
+    </div>
+{%- endblock form_row %}
+
+{# Improve form errors rendering #}
+{% block form_errors -%}
+    {%- if errors|length > 0 -%}
+        {%- for error in errors -%}
+            <div class="invalid-feedback d-block">
+                {{ error.message }}
+            </div>
+        {%- endfor -%}
+    {%- endif -%}
+{%- endblock form_errors %}
+
+{# Improve form labels #}
+{% block form_label -%}
+    {%- set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' form-label')|trim}) -%}
+    {{- parent() -}}
+{%- endblock form_label %}
+
+{# Improve form widgets #}
+{% block form_widget -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' form-control')|trim}) -%}
+    {{- parent() -}}
+{%- endblock form_widget %}
+
+{# Custom styling for choice widgets #}
+{% block choice_widget -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' form-select')|trim}) -%}
+    {{- parent() -}}
+{%- endblock choice_widget %}
+
+{# Custom styling for checkbox and radio widgets #}
+{% block checkbox_widget -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' form-check-input')|trim}) -%}
+    {{- parent() -}}
+{%- endblock checkbox_widget %}
+
+{% block radio_widget -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' form-check-input')|trim}) -%}
+    {{- parent() -}}
+{%- endblock radio_widget %}
+
+{# Custom styling for help text #}
+{% block form_help -%}
+    {%- if help is not empty -%}
+        {%- set help_attr = help_attr|merge({class: (help_attr.class|default('') ~ ' form-text text-muted')|trim}) -%}
+        <small{% with { attr: help_attr } %}{{ block('attributes') }}{% endwith %}>
+            {{- help -}}
+        </small>
+    {%- endif -%}
+{%- endblock form_help %}

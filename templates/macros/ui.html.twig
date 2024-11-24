@@ -1,0 +1,135 @@
+{% macro page_header(title, back_path = null) %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        {% if back_path %}
+            <a href="{{ back_path }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro flash_messages() %}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+{% endmacro %}
+
+{% macro loading_spinner() %}
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+{% endmacro %}
+
+{% macro empty_state(message, icon = 'bi-inbox') %}
+    <div class="text-center py-5">
+        <i class="bi {{ icon }} display-1 text-muted mb-3"></i>
+        <p class="lead text-muted">{{ message }}</p>
+    </div>
+{% endmacro %}
+
+{% macro tooltip(text) %}
+    <i class="bi bi-info-circle text-muted" 
+       data-bs-toggle="tooltip" 
+       data-bs-placement="top" 
+       title="{{ text }}"></i>
+{% endmacro %}
+
+{% macro confirmation_modal(id, title, message, confirm_text = 'Confirm', cancel_text = 'Cancel') %}
+    <div class="modal fade" id="{{ id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ title }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {{ message }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_text }}</button>
+                    <button type="button" class="btn btn-primary confirm-action">{{ confirm_text }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro card(title = null, subtitle = null) %}
+    <div class="card mb-4">
+        {% if title %}
+            <div class="card-header">
+                <h5 class="card-title mb-0">{{ title }}</h5>
+                {% if subtitle %}
+                    <h6 class="card-subtitle mb-0 text-muted">{{ subtitle }}</h6>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="card-body">
+            {{ block('card_content') }}
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro pagination(current_page, total_pages, route, params = {}) %}
+    {% if total_pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ path(route, params|merge({'page': current_page - 1})) }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for i in max(1, current_page - 2)..min(total_pages, current_page + 2) %}
+                    <li class="page-item {{ i == current_page ? 'active' }}">
+                        <a class="page-link" href="{{ path(route, params|merge({'page': i})) }}">{{ i }}</a>
+                    </li>
+                {% endfor %}
+
+                {% if current_page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ path(route, params|merge({'page': current_page + 1})) }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% endmacro %}
+
+{% macro filter_button(label, value, current_filter, route, params = {}) %}
+    <a href="{{ path(route, params|merge({'filter': value})) }}" 
+       class="btn btn-outline-primary {{ current_filter == value ? 'active' }}">
+        {{ label }}
+    </a>
+{% endmacro %}
+
+{% macro stats_card(title, value, subtitle = null, icon = null, color = 'primary') %}
+    <div class="card text-{{ color }} mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted mb-2">{{ title }}</h6>
+                    <h2 class="mb-0">{{ value }}</h2>
+                    {% if subtitle %}
+                        <small class="text-muted">{{ subtitle }}</small>
+                    {% endif %}
+                </div>
+                {% if icon %}
+                    <div class="text-{{ color }} opacity-25">
+                        <i class="bi {{ icon }} display-4"></i>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endmacro %}

@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v4.0.9",
+            "version": "v4.0.10",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "ffadacce69e1b9edc5a5b797a54af1e1dd34f834"
+                "reference": "eb5321837d1e61f4a69e4b2e9021a472bd03c6c3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/ffadacce69e1b9edc5a5b797a54af1e1dd34f834",
-                "reference": "ffadacce69e1b9edc5a5b797a54af1e1dd34f834",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/eb5321837d1e61f4a69e4b2e9021a472bd03c6c3",
+                "reference": "eb5321837d1e61f4a69e4b2e9021a472bd03c6c3",
                 "shasum": ""
             },
             "require": {
@@ -216,9 +216,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v4.0.9"
+                "source": "https://github.com/api-platform/core/tree/v4.0.10"
             },
-            "time": "2024-11-15T10:35:49+00:00"
+            "time": "2024-11-22T11:09:29+00:00"
         },
         {
             "name": "doctrine/cache",

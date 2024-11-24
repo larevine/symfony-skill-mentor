@@ -4,7 +4,9 @@ controllers:
         namespace: App\Interface\Controller
     type: attribute
 
-# Страница для тестов функционала
-hello_world:
-    path: /hello_world/
-    controller: App\Interface\Controller\HelloWorldController::hello
+api_controllers:
+    resource:
+        path: ../src/Interface/Controller/Api/
+        namespace: App\Interface\Controller\Api
+    type: attribute
+    prefix: /api

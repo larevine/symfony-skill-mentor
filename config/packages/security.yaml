@@ -16,50 +16,63 @@ security:
             pattern: ^/api/
             security: true
             stateless: true
+            provider: app_user_provider
+            jwt: ~
             custom_authenticators:
-                - App\Application\Security\TokenAuthenticator
+                - App\Infrastructure\Security\TokenAuthenticator
         web:
             pattern: ^/(?!api)
             stateless: false
+            provider: app_user_provider
             custom_authenticators:
-                - App\Application\Security\AppLoginAuthenticator
-
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#the-firewall
-
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
-
-    # TODO: пересмотреть как работать со стратегиями
+                - App\Infrastructure\Security\AppLoginAuthenticator
 
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-      # API Groups
-      - { path: ^/api/v1/groups$, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/groups/\d+, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/groups.*$, roles: [ ROLE_ADMIN ], methods: [ POST, PATCH, PUT, DELETE ] }
-      # API Roles
-      - { path: ^/api/v1/roles$, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/roles/\d+, roles: ROLE_BASE, methods: [ GET ] }
-      - { path: ^/api/v1/roles.*$, roles: [ ROLE_ADMIN ], methods: [ POST, PATCH, PUT, DELETE ] }
-      # API Skills
-      - { path: ^/api/v1/skills$, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/skills/\d+, roles: ROLE_BASE, methods: [ GET ] }
-      - { path: ^/api/v1/skills.*$, roles: [ ROLE_ADMIN ], methods: [ POST, PATCH, PUT, DELETE ] }
-      # API Users
-      - { path: ^/api/v1/users$, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/users/\d+, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/api/v1/users.*$, roles: [ ROLE_ADMIN ], methods: [ POST, PATCH, PUT, DELETE ] }
-      # WEB Формы
-      - { path: ^/groups/form-create$, roles: [ ROLE_ADMIN, ROLE_TEACHER ], methods: [ GET, POST ] }
-      - { path: ^/groups/form-update/\d+, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
-      - { path: ^/users$, roles: [ ROLE_BASE ], methods: [ GET ] }
-      - { path: ^/users/form-create$, roles: [ ], methods: [ GET, POST ] }
-      - { path: ^/users/form-update.*$, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
-      - { path: ^/users/form-update/\d+, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
-      # Страница для тестов функционала
-      - { path: ^/hello_world, roles: [ PUBLIC_ACCESS ], methods: [ GET ] }
+        # Auth
+        - { path: ^/api/v1/auth/token, roles: PUBLIC_ACCESS }
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+        
+        # API Groups
+        - { path: ^/api/v1/groups$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/groups$, roles: ROLE_ADMIN, methods: [ POST ] }
+        - { path: ^/api/v1/groups/\d+$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/groups/\d+$, roles: ROLE_ADMIN, methods: [ PUT, DELETE ] }
+        - { path: ^/api/v1/groups/\d+/skills, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/groups/\d+/students, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/groups/\d+/teacher, roles: ROLE_ADMIN }
+        
+        # API Students
+        - { path: ^/api/v1/students$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/students$, roles: ROLE_ADMIN, methods: [ POST ] }
+        - { path: ^/api/v1/students/\d+$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/students/\d+$, roles: ROLE_ADMIN, methods: [ PUT, DELETE ] }
+        - { path: ^/api/v1/students/\d+/skills, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/students/\d+/groups, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/students/\d+/suitable-groups, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        
+        # API Teachers
+        - { path: ^/api/v1/teachers$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/teachers$, roles: ROLE_ADMIN, methods: [ POST ] }
+        - { path: ^/api/v1/teachers/\d+$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/api/v1/teachers/\d+$, roles: ROLE_ADMIN, methods: [ PUT, DELETE ] }
+        - { path: ^/api/v1/teachers/\d+/skills, roles: ROLE_ADMIN }
+        
+        # Web Teachers
+        - { path: ^/teachers$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
+        - { path: ^/teachers/create$, roles: ROLE_ADMIN, methods: [ GET, POST ] }
+        - { path: ^/teachers/\d+/delete$, roles: ROLE_ADMIN, methods: [ POST ] }
+        - { path: ^/teachers/\d+/edit$, roles: ROLE_ADMIN, methods: [ GET, POST ] }
+        - { path: ^/teachers/\d+/groups$, roles: ROLE_ADMIN, methods: [ GET, POST ] }
+        - { path: ^/teachers/\d+/skills$, roles: ROLE_ADMIN, methods: [ GET, POST ] }
+        
+        # WEB Формы
+        - { path: ^/groups/form-create$, roles: [ ROLE_ADMIN, ROLE_TEACHER ], methods: [ GET, POST ] }
+        - { path: ^/groups/form-update/\d+, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
+        - { path: ^/users$, roles: [ IS_AUTHENTICATED_FULLY ], methods: [ GET ] }
+        - { path: ^/users/form-create$, roles: [ ], methods: [ GET, POST ] }
+        - { path: ^/users/form-update/\d+, roles: [ ROLE_ADMIN ], methods: [ GET, POST ] }
 
 when@test:
     security:

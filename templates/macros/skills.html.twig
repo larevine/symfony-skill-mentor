@@ -1,0 +1,92 @@
+{% macro skill_list(skills, title = 'Skills') %}
+    {% if skills is not empty %}
+        <div class="skills-section">
+            <h6 class="mb-2">{{ title }}</h6>
+            <div class="skills-container">
+                {% for skill in skills %}
+                    <span class="badge bg-primary me-2 mb-2">
+                        {{ skill.skill.name }}
+                        {% if skill.requiredLevel is defined %}
+                            <span class="badge bg-light text-dark ms-1">
+                                {{ skill.requiredLevel.label }}
+                            </span>
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro skill_match_indicator(teacher, group) %}
+    {% set matching_skills = 0 %}
+    {% for teacher_skill in teacher.skillProficiencies %}
+        {% for group_skill in group.requiredSkills %}
+            {% if teacher_skill.skill.id == group_skill.skill.id 
+                and teacher_skill.level.value >= group_skill.requiredLevel.value %}
+                {% set matching_skills = matching_skills + 1 %}
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+
+    {% set match_percentage = (matching_skills / group.requiredSkills|length * 100)|round %}
+    
+    <div class="skill-match-indicator">
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar {% if match_percentage < 50 %}bg-danger{% elseif match_percentage < 80 %}bg-warning{% else %}bg-success{% endif %}"
+                 role="progressbar"
+                 style="width: {{ match_percentage }}%"
+                 aria-valuenow="{{ match_percentage }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+                {{ match_percentage }}%
+            </div>
+        </div>
+        <small class="text-muted">
+            Matching {{ matching_skills }} of {{ group.requiredSkills|length }} required skills
+        </small>
+    </div>
+{% endmacro %}
+
+{% macro skill_comparison(teacher_skills, group_skills) %}
+    <div class="skill-comparison">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Teacher Skills</h6>
+                <ul class="list-unstyled">
+                    {% for skill in teacher_skills %}
+                        <li>
+                            <span class="badge bg-secondary">{{ skill.skill.name }}</span>
+                            <span class="badge bg-info">{{ skill.level.label }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Required Skills</h6>
+                <ul class="list-unstyled">
+                    {% for skill in group_skills %}
+                        {% set matched = false %}
+                        {% for teacher_skill in teacher_skills %}
+                            {% if teacher_skill.skill.id == skill.skill.id %}
+                                {% set matched = true %}
+                                <li>
+                                    <span class="badge {% if teacher_skill.level.value >= skill.requiredLevel.value %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ skill.skill.name }}
+                                    </span>
+                                    <span class="badge bg-info">{{ skill.requiredLevel.label }}</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not matched %}
+                            <li>
+                                <span class="badge bg-danger">{{ skill.skill.name }}</span>
+                                <span class="badge bg-info">{{ skill.requiredLevel.label }}</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endmacro %}

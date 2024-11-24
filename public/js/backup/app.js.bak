@@ -1,0 +1,495 @@
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize confirmation modals
+    document.querySelectorAll('[data-confirm]').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const modalId = this.dataset.modalTarget;
+            const modal = new bootstrap.Modal(document.getElementById(modalId));
+            modal.show();
+
+            document.querySelector(`#${modalId} .confirm-action`).addEventListener('click', () => {
+                window.location.href = button.href;
+            });
+        });
+    });
+
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    });
+
+    // Dynamic form fields
+    document.querySelectorAll('[data-dynamic-field]').forEach(container => {
+        const addButton = container.querySelector('.add-field');
+        const template = container.querySelector('.field-template');
+        const fieldsContainer = container.querySelector('.fields-container');
+
+        if (addButton && template && fieldsContainer) {
+            addButton.addEventListener('click', () => {
+                const newField = template.content.cloneNode(true);
+                const index = fieldsContainer.children.length;
+                
+                newField.querySelectorAll('[name]').forEach(input => {
+                    input.name = input.name.replace('__index__', index);
+                });
+
+                newField.querySelectorAll('.remove-field').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        button.closest('.dynamic-field').remove();
+                        updateFieldIndexes(fieldsContainer);
+                    });
+                });
+
+                fieldsContainer.appendChild(newField);
+            });
+        }
+    });
+
+    // Helper function to update field indexes after removal
+    function updateFieldIndexes(container) {
+        container.querySelectorAll('.dynamic-field').forEach((field, index) => {
+            field.querySelectorAll('[name]').forEach(input => {
+                input.name = input.name.replace(/\[\d+\]/, `[${index}]`);
+            });
+        });
+    }
+
+    // AJAX form submission
+    document.querySelectorAll('form[data-ajax]').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = form.querySelector('[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: form.method,
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else if (data.message) {
+                        showAlert('success', data.message);
+                    }
+                } else {
+                    showAlert('danger', data.error || 'An error occurred');
+                }
+            } catch (error) {
+                showAlert('danger', 'An unexpected error occurred');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            }
+        });
+    });
+
+    // Helper function to show alerts
+    function showAlert(type, message) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        const alertContainer = document.getElementById('alert-container') || document.body;
+        alertContainer.insertAdjacentHTML('afterbegin', alertHtml);
+    }
+
+    // Skill search and selection
+    const skillSearch = document.querySelector('[data-skill-search]');
+    if (skillSearch) {
+        skillSearch.addEventListener('input', debounce(async function() {
+            const query = this.value;
+            if (query.length < 2) return;
+
+            try {
+                const response = await fetch(`/api/skills/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                const resultsContainer = document.querySelector('.skill-search-results');
+                resultsContainer.innerHTML = '';
+                
+                data.forEach(skill => {
+                    const skillElement = document.createElement('div');
+                    skillElement.className = 'skill-result';
+                    skillElement.textContent = skill.name;
+                    skillElement.addEventListener('click', () => addSkill(skill));
+                    resultsContainer.appendChild(skillElement);
+                });
+            } catch (error) {
+                console.error('Error searching skills:', error);
+            }
+        }, 300));
+    }
+
+    // Helper function to debounce input
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func.apply(this, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Function to add a skill to the selected skills list
+    function addSkill(skill) {
+        const selectedSkills = document.querySelector('.selected-skills');
+        if (!selectedSkills) return;
+
+        // Check if skill is already selected
+        if (selectedSkills.querySelector(`[data-skill-id="${skill.id}"]`)) return;
+
+        const skillElement = document.createElement('div');
+        skillElement.className = 'badge bg-primary me-2 mb-2';
+        skillElement.dataset.skillId = skill.id;
+        skillElement.innerHTML = `
+            ${skill.name}
+            <button type="button" class="btn-close btn-close-white" aria-label="Remove"></button>
+            <input type="hidden" name="skills[]" value="${skill.id}">
+        `;
+
+        skillElement.querySelector('.btn-close').addEventListener('click', () => {
+            skillElement.remove();
+        });
+
+        selectedSkills.appendChild(skillElement);
+        document.querySelector('[data-skill-search]').value = '';
+        document.querySelector('.skill-search-results').innerHTML = '';
+    }
+
+    // Teacher replacement form handling
+    const replaceForm = document.getElementById('teacher-replace-form');
+    if (replaceForm) {
+        replaceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(replaceForm);
+            const submitButton = replaceForm.querySelector('button[type="submit"]');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            
+            // Disable submit button and show loading spinner
+            submitButton.disabled = true;
+            loadingSpinner.classList.remove('d-none');
+            
+            fetch(replaceForm.getAttribute('action'), {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
+                } else {
+                    showAlert('danger', data.error);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'An error occurred while processing your request');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                loadingSpinner.classList.add('d-none');
+            });
+        });
+    }
+
+    // Teacher assignment form handling
+    const assignForm = document.getElementById('teacher-assign-form');
+    if (assignForm) {
+        assignForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(assignForm);
+            const submitButton = assignForm.querySelector('button[type="submit"]');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            
+            // Validate form
+            const days = document.querySelectorAll('input[name="days[]"]:checked');
+            if (days.length === 0) {
+                showAlert('danger', 'Please select at least one day');
+                return;
+            }
+            
+            // Disable submit button and show loading spinner
+            submitButton.disabled = true;
+            loadingSpinner.classList.remove('d-none');
+            
+            fetch(assignForm.getAttribute('action'), {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
+                } else {
+                    showAlert('danger', data.error);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'An error occurred while processing your request');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                loadingSpinner.classList.add('d-none');
+            });
+        });
+    }
+
+    // Utility functions
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById('alert-container');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        alertContainer.appendChild(alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alert.classList.remove('show');
+            setTimeout(() => {
+                alertContainer.removeChild(alert);
+            }, 150);
+        }, 5000);
+    }
+
+    // Teacher search and filter
+    const teacherSearch = document.getElementById('teacher-search');
+    const teacherCards = document.querySelectorAll('.teacher-card');
+    
+    if (teacherSearch) {
+        teacherSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            teacherCards.forEach(card => {
+                const teacherName = card.querySelector('.teacher-name').textContent.toLowerCase();
+                const teacherSkills = card.querySelector('.teacher-skills').textContent.toLowerCase();
+                
+                if (teacherName.includes(searchTerm) || teacherSkills.includes(searchTerm)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Schedule validation
+    const startTime = document.getElementById('start-time');
+    const endTime = document.getElementById('end-time');
+    
+    if (startTime && endTime) {
+        [startTime, endTime].forEach(input => {
+            input.addEventListener('change', function() {
+                if (startTime.value && endTime.value) {
+                    if (startTime.value >= endTime.value) {
+                        showAlert('danger', 'End time must be after start time');
+                        endTime.value = '';
+                    }
+                }
+            });
+        });
+    }
+
+    // Date range validation
+    const startDate = document.getElementById('start-date');
+    const endDate = document.getElementById('end-date');
+    
+    if (startDate && endDate) {
+        [startDate, endDate].forEach(input => {
+            input.addEventListener('change', function() {
+                if (startDate.value && endDate.value) {
+                    if (startDate.value > endDate.value) {
+                        showAlert('danger', 'End date must be after start date');
+                        endDate.value = '';
+                    }
+                }
+            });
+        });
+    }
+
+    // Schedule management
+    const scheduleForm = document.querySelector('.schedule-form');
+    if (scheduleForm) {
+        const teacherId = scheduleForm.dataset.teacherId;
+        const dayInputs = document.querySelectorAll('input[name="days[]"]');
+        const timeContainer = document.querySelector('.time-slots-container');
+        
+        // When days are selected, fetch available time slots
+        dayInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const selectedDays = Array.from(document.querySelectorAll('input[name="days[]"]:checked'))
+                    .map(checkbox => checkbox.value);
+                
+                if (selectedDays.length > 0) {
+                    fetchAvailableSlots(teacherId, selectedDays);
+                } else {
+                    timeContainer.innerHTML = '';
+                }
+            });
+        });
+    }
+
+    // Fetch available time slots from API
+    function fetchAvailableSlots(teacherId, days) {
+        const timeContainer = document.querySelector('.time-slots-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        
+        loadingSpinner.classList.remove('d-none');
+        timeContainer.innerHTML = '';
+        
+        const queryParams = new URLSearchParams();
+        days.forEach(day => queryParams.append('days[]', day));
+        
+        fetch(`/api/schedule/teacher/${teacherId}/slots?${queryParams.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.slots) {
+                    displayTimeSlots(data.slots);
+                } else {
+                    showAlert('danger', 'Failed to load available time slots');
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'Error loading time slots');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                loadingSpinner.classList.add('d-none');
+            });
+    }
+
+    // Display available time slots
+    function displayTimeSlots(slots) {
+        const timeContainer = document.querySelector('.time-slots-container');
+        const template = document.getElementById('time-slot-template');
+        
+        Object.entries(slots).forEach(([day, daySlots]) => {
+            const dayContainer = document.createElement('div');
+            dayContainer.className = 'mb-4';
+            dayContainer.innerHTML = `<h5 class="mb-3">${formatDay(day)}</h5>`;
+            
+            if (daySlots.length === 0) {
+                dayContainer.innerHTML += '<p class="text-muted">No available slots</p>';
+            } else {
+                const slotsGrid = document.createElement('div');
+                slotsGrid.className = 'row g-2';
+                
+                daySlots.forEach(slot => {
+                    const slotElement = template.content.cloneNode(true);
+                    const button = slotElement.querySelector('button');
+                    button.textContent = `${slot.start} - ${slot.end}`;
+                    button.dataset.start = slot.start;
+                    button.dataset.end = slot.end;
+                    button.dataset.day = day;
+                    
+                    button.addEventListener('click', function() {
+                        selectTimeSlot(this);
+                    });
+                    
+                    slotsGrid.appendChild(slotElement);
+                });
+                
+                dayContainer.appendChild(slotsGrid);
+            }
+            
+            timeContainer.appendChild(dayContainer);
+        });
+    }
+
+    // Select a time slot
+    function selectTimeSlot(button) {
+        const allSlots = document.querySelectorAll('.time-slot');
+        allSlots.forEach(slot => slot.classList.remove('selected'));
+        
+        button.classList.add('selected');
+        
+        // Update form inputs
+        document.getElementById('start-time').value = button.dataset.start;
+        document.getElementById('end-time').value = button.dataset.end;
+        
+        // Check availability
+        checkAvailability(
+            document.querySelector('.schedule-form').dataset.teacherId,
+            button.dataset.day,
+            button.dataset.start,
+            button.dataset.end
+        );
+    }
+
+    // Check teacher availability for selected slot
+    function checkAvailability(teacherId, day, startTime, endTime) {
+        const queryParams = new URLSearchParams({
+            day: day,
+            start_time: startTime,
+            end_time: endTime
+        });
+        
+        fetch(`/api/schedule/teacher/${teacherId}/check?${queryParams.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.is_available) {
+                    showAlert('warning', 'This time slot might not be available. Please select another one.');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking availability:', error);
+            });
+    }
+
+    // Format day name
+    function formatDay(day) {
+        const days = {
+            'monday': 'Monday',
+            'tuesday': 'Tuesday',
+            'wednesday': 'Wednesday',
+            'thursday': 'Thursday',
+            'friday': 'Friday',
+            'saturday': 'Saturday',
+            'sunday': 'Sunday'
+        };
+        return days[day.toLowerCase()] || day;
+    }
+});

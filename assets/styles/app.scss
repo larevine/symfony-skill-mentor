@@ -1,5 +1,83 @@
+// Import Bootstrap
 @import "~bootstrap/scss/bootstrap";
 
+// Custom variables
+$primary-color: #0d6efd;
+$secondary-color: #6c757d;
+$success-color: #198754;
+$info-color: #0dcaf0;
+$warning-color: #ffc107;
+$danger-color: #dc3545;
+
+// Custom styles
+.table-responsive {
+    margin-bottom: 1rem;
+}
+
+.btn-group {
+    .btn {
+        margin-right: 0.25rem;
+        &:last-child {
+            margin-right: 0;
+        }
+    }
+}
+
+.badge {
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+}
+
+// Skills management
+.skill-list {
+    .skill-item {
+        border: 1px solid $secondary-color;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+
+        .skill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .skill-level {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+    }
+}
+
+// Form styles
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+// Card styles
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1rem;
+
+    .card-header {
+        background-color: rgba($primary-color, 0.03);
+        border-bottom: 1px solid rgba($primary-color, 0.125);
+    }
+}
+
+// Alert styles
+.alert {
+    margin-bottom: 1rem;
+}
+
+// Page styles
 $page-background: white;
 $form-color: rgba(224, 221, 178, 0.7);
 

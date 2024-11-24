@@ -4,35 +4,35 @@ declare(strict_types=1);
 
 namespace App\Domain\Entity;
 
-use App\Domain\ValueObject\SkillLevelEnum;
-use App\Infrastructure\Repository\Doctrine\SkillRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use JetBrains\PhpStorm\ArrayShape;
 
-#[ORM\Table(name: '`skills`', options: ['comment' => 'Навык и уровень владения'])]
-#[ORM\Entity(repositoryClass: SkillRepository::class)]
-#[ORM\Index(name: 'skills__name_level__idx', columns: ['name', 'level'])]
-#[ORM\UniqueConstraint(name: 'skills__name_level__uq', columns: ['name', 'level'])]
+#[ORM\Entity]
+#[ORM\Table(name: 'skills')]
+#[ORM\HasLifecycleCallbacks]
+#[ORM\Index(name: 'skills__name__idx', columns: ['name'])]
+#[ORM\Index(name: 'skills__name__idx', columns: ['name'])]
+#[ORM\UniqueConstraint(name: 'skills__name__uq', columns: ['name'])]
 class Skill
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[ORM\Column(name: 'id', type: Types::INTEGER, unique: true)]
-    private int $id;
+    #[ORM\Column(name: 'id', type: Types::BIGINT, unique: true)]
+    private ?int $id = null;
 
-    #[ORM\Column(name: 'name', type: Types::STRING, length: 120, nullable: false)]
+    #[ORM\Column(name: 'name', type: Types::STRING, length: 255, nullable: false)]
     private string $name;
 
-    #[ORM\Column(name: 'level', type: Types::SMALLINT, enumType: SkillLevelEnum::class, options: ['default' => 1])]
-    private SkillLevelEnum $level;
+    #[ORM\Column(name: 'description', type: Types::STRING, length: 1000, nullable: true)]
+    private ?string $description = null;
 
-    #[ORM\OneToMany(targetEntity: UserSkill::class, mappedBy: 'skill')]
-    private Collection $users;
+    public function __construct(string $name, ?string $description = null)
+    {
+        $this->name = $name;
+        $this->description = $description;
+    }
 
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -42,66 +42,18 @@ class Skill
         return $this->name;
     }
 
-    public function getFullName(): string
-    {
-        return $this->name . ' ' . $this->level->toString();
-    }
-
     public function setName(string $name): void
     {
         $this->name = $name;
     }
 
-    public function getLevel(): SkillLevelEnum
+    public function getDescription(): ?string
     {
-        return $this->level;
+        return $this->description;
     }
 
-    public function setLevel(SkillLevelEnum $level): void
+    public function setDescription(?string $description): void
     {
-        $this->level = $level;
-    }
-
-    /**
-     * @return array<UserSkill>
-     */
-    public function getUsers(): array
-    {
-        return $this->users->map(function (UserSkill $user) {
-            return $user->getUser();
-        })->toArray();
-    }
-
-    public function __construct()
-    {
-        $this->users = new ArrayCollection();
-    }
-
-    public function addUser(UserSkill $user): void
-    {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-        }
-    }
-
-    public function removeUser(UserSkill $user): void
-    {
-        if ($this->users->contains($user)) {
-            $this->users->removeElement($user);
-        }
-    }
-
-    #[ArrayShape([
-        'id' => 'int',
-        'name' => 'string',
-        'level' => 'string'
-    ])]
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'level' => $this->level->toString(),
-        ];
+        $this->description = $description;
     }
 }

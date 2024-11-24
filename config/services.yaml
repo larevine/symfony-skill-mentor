@@ -10,7 +10,7 @@ parameters:
 services:
     # default configuration for services in *this* file
     _defaults:
-        autowire: true      # Включает автоматическую инъекцию зависимостей.
+        autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
     # makes classes in src/ available to be used as services
@@ -22,148 +22,86 @@ services:
             - '../src/Domain/Entity/'
             - '../src/Kernel.php'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
-
     App\Application\Doctrine\PostGenerateSchemaEventListener:
         tags:
-            - { name: doctrine.event_subscriber, connection: default }
+            - { name: doctrine.event_listener, event: postGenerateSchema }
 
-    # Авторизация
-    App\Application\Security\Auth\Token\JWTAuthService:
+    # Репозитории
+    App\Infrastructure\Repository\Doctrine\GroupRepository:
         arguments:
-            $user_service: '@App\Application\Service\UserService'
-            $token_TTL: '%env(JWT_TTL_SEC)%'
-    App\Application\Security\Auth\Token\ApiAuthService:
-        arguments:
-            $user_service: '@App\Application\Service\UserService'
+            $entity_class: App\Domain\Entity\Group
 
-    # Сервисы приложения
-    App\Application\Interface\IGroupService:
-        class: App\Application\Service\GroupService
-    App\Application\Interface\IUserService:
-        class: App\Application\Service\UserService
-    App\Application\Interface\ISkillService:
-        class: App\Application\Service\SkillService
-    App\Application\Interface\IUserSkillService:
-        class: App\Application\Service\UserSkillService
-    App\Application\Interface\IGroupUserService:
-        class: App\Application\Service\GroupUserService
-    App\Application\Interface\Management\IUserManagementService:
-        class: App\Application\Service\Management\UserManagementService
-    App\Application\Interface\Management\ISkillManagementService:
-        class: App\Application\Service\Management\SkillManagementService
-    App\Application\Interface\Management\IGroupManagementService:
-        class: App\Application\Service\Management\GroupManagementService
-    App\Application\Service\UserService:
+    App\Infrastructure\Repository\Doctrine\TeacherRepository:
         arguments:
-            $user_repository: '@App\Infrastructure\Repository\Doctrine\UserRepository'
-    App\Application\Service\SkillService:
-        arguments:
-            $skill_repository: '@App\Infrastructure\Repository\Doctrine\SkillRepository'
-    App\Application\Service\Management\SkillManagementService:
-        arguments:
-            $skill_service: '@App\Application\Service\SkillService'
-    App\Application\Service\GroupService:
-        arguments:
-            $group_repository: '@App\Infrastructure\Repository\Doctrine\GroupRepository'
-    App\Application\Service\Management\GroupManagementService:
-        arguments:
-            $group_service: '@App\Application\Service\GroupService'
-            $skill_service: '@App\Application\Service\SkillService'
-            $group_user_service: '@App\Application\Service\GroupUserService'
-    App\Application\Service\UserSkillService:
-        arguments:
-            $user_skill_repository: '@App\Infrastructure\Repository\Doctrine\UserSkillRepository'
-    App\Application\Service\GroupUserService:
-        arguments:
-            $group_user_repository: '@App\Infrastructure\Repository\Doctrine\GroupUserRepository'
-            $user_service: '@App\Application\Service\UserService'
-    App\Application\Service\Management\UserManagementService:
-        arguments:
-            $user_service: '@App\Application\Service\UserService'
-            $skill_service: '@App\Application\Service\SkillService'
-            $user_skill_service: '@App\Application\Service\UserSkillService'
+            $entity_class: App\Domain\Entity\Teacher
 
-    # Контроллеры
-    App\Interface\Controller\Api\V1\UserController:
+    App\Infrastructure\Repository\Doctrine\SkillRepository:
         arguments:
-            $user_service: '@App\Application\Service\UserService'
-            $user_management_service: '@App\Application\Service\Management\UserManagementService'
-    App\Interface\Controller\Api\V1\SkillController:
+            $entity_class: App\Domain\Entity\Skill
+
+    App\Infrastructure\Repository\Doctrine\StudentRepository:
         arguments:
-            $skill_service: '@App\Application\Service\SkillService'
-            $skill_management_service: '@App\Application\Service\Management\SkillManagementService'
-    App\Interface\Controller\Api\V1\GroupController:
+            $entity_class: App\Domain\Entity\Student
+
+    App\Infrastructure\Repository\Doctrine\UserRepository:
         arguments:
-            $group_service: '@App\Application\Service\GroupService'
+            $entity_class: App\Domain\Entity\User
 
-    # Просто локальное тестирование зависимостей
+    # Интерфейсы репозиториев
+    App\Domain\Repository\TeacherRepositoryInterface:
+        alias: App\Infrastructure\Repository\Doctrine\TeacherRepository
 
-    # передаем сервис в качестве аргумента
-    App\Interface\Controller\HelloWorldController:
+    App\Domain\Repository\GroupRepositoryInterface:
+        alias: App\Infrastructure\Repository\Doctrine\GroupRepository
+
+    App\Domain\Repository\SkillRepositoryInterface:
+        alias: App\Infrastructure\Repository\Doctrine\SkillRepository
+
+    App\Domain\Repository\StudentRepositoryInterface:
+        alias: App\Infrastructure\Repository\Doctrine\StudentRepository
+
+    App\Domain\Repository\UserRepositoryInterface:
+        alias: App\Infrastructure\Repository\Doctrine\UserRepository
+
+    # Сервисы безопасности
+    App\Infrastructure\Security\Provider\TokenUserProvider:
         arguments:
-            $format_service: '@list_formatter'
+            $user_repository: '@App\Domain\Repository\UserRepositoryInterface'
 
-    # Formatters
-
-    # Символ @ в конфигурации сервисов Symfony указывает на то, что сервис должен быть создан с использованием
-    # инстанса класса, находящегося в контейнере, а не как статический метод. Это позволяет использовать зависимости
-    # и управление жизненным циклом объектов, что делает систему более гибкой и масштабируемой.
-
-    # используем в CompilerPass по тегу
-    strong_formatter:
-        class: App\Application\Service\HelloWorld\FormatService
-        factory: [ 'App\Application\Service\HelloWorld\FormatServiceFactory', 'strongFormatService' ]
-        tags: [ 'app.formatter_service' ]
-
-    # используем в CompilerPass по тегу
-    cite_formatter:
-        class: App\Application\Service\HelloWorld\FormatService
-        factory: [ '@App\Application\Service\HelloWorld\FormatServiceFactory', 'citeFormatService' ]
-        tags: [ 'app.formatter_service' ]
-
-    # не используется, так как нет тега и не вызывается
-    main_header_formatter:
-        class: App\Application\Service\HelloWorld\FormatService
-        factory: [ '@App\Application\Service\HelloWorld\FormatServiceFactory', 'headerFormatService' ]
-        arguments: [ 1 ]
-
-    # используется как первый сервис в HelloWorldController, второй добавляется в CompilerPass
-    list_formatter:
-        class: App\Application\Service\HelloWorld\FormatService
-        calls:
-            - [ setTag, [ 'ol' ] ]
-
-    # используем в CompilerPass по тегу
-    list_item_formatter:
-        class: App\Application\Service\HelloWorld\FormatService
-        calls:
-            - [ setTag, [ 'li' ] ]
-        tags: [ 'app.formatter_service' ]
-
-    # Greeters
-
-    # используем в CompilerPass по тегу
-    hello_greeter:
-        class: App\Application\Service\HelloWorld\GreeterService
+    # Доменные сервисы
+    App\Domain\Service\GroupService:
         arguments:
-            $greet: 'Hello'
-        tags:
-            - { name: 'app.greeter_service', priority: 3 }
+            $group_repository: '@App\Domain\Repository\GroupRepositoryInterface'
+            $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
 
-    # используем в CompilerPass по тегу
-    greetings_greeter:
-        class: App\Application\Service\HelloWorld\GreeterService
+    App\Domain\Service\TeacherService:
         arguments:
-            $greet: 'Greetings'
-        tags:
-            - { name: 'app.greeter_service', priority: 2 }
+            $teacher_repository: '@App\Domain\Repository\TeacherRepositoryInterface'
+            $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
 
-    # используем в CompilerPass по тегу
-    hi_greeter:
-        class: App\Application\Service\HelloWorld\GreeterService
+    App\Domain\Service\StudentService:
         arguments:
-            $greet: 'Hi'
-        tags:
-            - { name: 'app.greeter_service', priority: 1 }
+            $student_repository: '@App\Domain\Repository\StudentRepositoryInterface'
+            $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
+
+    App\Domain\Service\SkillService:
+        arguments:
+            $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
+
+    # Интерфейсы сервисов
+    App\Domain\Service\GroupServiceInterface:
+        alias: App\Domain\Service\GroupService
+
+    App\Domain\Service\TeacherServiceInterface:
+        alias: App\Domain\Service\TeacherService
+
+    App\Domain\Service\StudentServiceInterface:
+        alias: App\Domain\Service\StudentService
+
+    App\Domain\Service\SkillServiceInterface:
+        alias: App\Domain\Service\SkillService
+
+    # API Controllers
+    App\Interface\Controller\Api\V1\:
+        resource: '../src/Interface/Controller/Api/V1/'
+        tags: ['controller.service_arguments']

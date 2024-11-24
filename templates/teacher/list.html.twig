@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Teachers{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_link_tags('app') }}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('app') }}
+{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Teachers</h1>
+            <a href="{{ path('web_teacher_create') }}" class="btn btn-primary">Add Teacher</a>
+        </div>
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success">
+                {{ message }}
+            </div>
+        {% endfor %}
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Groups</th>
+                        <th>Skills</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for teacher in teachers %}
+                        <tr>
+                            <td>{{ teacher.name.fullName }}</td>
+                            <td>{{ teacher.email }}</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for group in teacher.teachingGroups %}
+                                        <span class="badge bg-primary">{{ group.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for skill in teacher.skills %}
+                                        <span class="badge bg-info">
+                                            {{ skill.skill.name }} (Level {{ skill.level }})
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ path('web_teacher_edit', {id: teacher.id}) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        Edit
+                                    </a>
+                                    <a href="{{ path('web_teacher_skills', {id: teacher.id}) }}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        Skills
+                                    </a>
+                                    <a href="{{ path('web_teacher_groups', {id: teacher.id}) }}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        Groups
+                                    </a>
+                                    <form action="{{ path('web_teacher_delete', {id: teacher.id}) }}" 
+                                          method="post" 
+                                          class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this teacher?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">No teachers found</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
