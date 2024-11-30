@@ -6,10 +6,10 @@ use ApiPlatform\GraphQl\Resolver\MutationResolverInterface;
 use App\Domain\Entity\Group;
 use Doctrine\ORM\EntityManagerInterface;
 
-class UpdateGroupNameResolver implements MutationResolverInterface
+readonly class UpdateGroupNameResolver implements MutationResolverInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $em
+        private EntityManagerInterface $em
     ) {
     }
 

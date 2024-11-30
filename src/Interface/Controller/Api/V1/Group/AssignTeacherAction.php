@@ -11,6 +11,7 @@ use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,6 +23,7 @@ final class AssignTeacherAction extends ApiController
     public function __construct(
         private readonly GroupServiceInterface $group_service,
         private readonly TeacherServiceInterface $teacher_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -40,6 +42,16 @@ final class AssignTeacherAction extends ApiController
             // Используем оба сервиса для поддержания консистентности
             $this->teacher_service->assignToGroup($teacher, $group);
             $this->group_service->assignTeacher($group, $teacher);
+
+            // Инвалидируем кэш группы и учителя
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group',
+                'id' => $id,
+            ]));
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher',
+                'id' => $teacher_id,
+            ]));
 
             return $this->json(GroupResponse::fromEntity($group));
         } catch (DomainException $e) {

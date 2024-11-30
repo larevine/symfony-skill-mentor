@@ -90,21 +90,27 @@ class SkillProficiency
 
     public function getLevel(): ProficiencyLevel
     {
-        return new ProficiencyLevel($this->level);
+        return new ProficiencyLevel('level_' . $this->level);
     }
 
-    private function setLevel(ProficiencyLevel|int $level): void
+    private function setLevel(ProficiencyLevel|int|string $level): void
     {
         if ($level instanceof ProficiencyLevel) {
-            $this->level = $level->toInt();
-        } else {
-            if ($level < self::MIN_LEVEL || $level > self::MAX_LEVEL) {
-                throw new InvalidArgumentException(
-                    sprintf('Level must be between %d and %d', self::MIN_LEVEL, self::MAX_LEVEL)
-                );
-            }
-            $this->level = $level;
+            $this->level = $level->getValue();
+            return;
         }
+
+        if (is_string($level)) {
+            $level = (int)$level;
+        }
+
+        if ($level < self::MIN_LEVEL || $level > self::MAX_LEVEL) {
+            throw new InvalidArgumentException(
+                sprintf('Level must be between %d and %d', self::MIN_LEVEL, self::MAX_LEVEL)
+            );
+        }
+
+        $this->level = $level;
     }
 
     public function setSkill(Skill $skill): void

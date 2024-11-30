@@ -17,7 +17,6 @@ use App\Domain\ValueObject\GroupCapacity;
 use App\Domain\ValueObject\GroupName;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Interface\DTO\GroupFilterRequest;
-use App\Domain\Service\GroupServiceInterface;
 use DomainException;
 
 readonly class GroupService implements GroupServiceInterface
@@ -105,8 +104,12 @@ readonly class GroupService implements GroupServiceInterface
             $criteria['name'] = $filter->search;
         }
 
-        if ($filter->teacher_ids !== null && !empty($filter->teacher_ids)) {
-            $criteria['teacher'] = $filter->teacher_ids[0];
+        if (!empty($filter->teacher_ids)) {
+            $criteria['teacher_ids'] = $filter->teacher_ids;
+        }
+
+        if (!empty($filter->required_skill_ids)) {
+            $criteria['required_skill_ids'] = $filter->required_skill_ids;
         }
 
         if ($filter->has_available_spots === true) {
@@ -287,6 +290,17 @@ readonly class GroupService implements GroupServiceInterface
                 $this->group_repository
             );
             $group_aggregate->addRequiredSkill($skill, $level);
+        });
+    }
+
+    public function removeSkill(Group $group, Skill $skill): void
+    {
+        $this->wrapDomainException(function () use ($group, $skill) {
+            $group_aggregate = new GroupAggregate(
+                new EntityId($group->getId()),
+                $this->group_repository
+            );
+            $group_aggregate->removeSkill($skill);
         });
     }
 

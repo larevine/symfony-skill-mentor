@@ -12,6 +12,7 @@ use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\StudentResponse;
 use App\Interface\DTO\UpdateSkillProficiencyRequest;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -23,6 +24,7 @@ final class AddSkillAction extends ApiController
 {
     public function __construct(
         private readonly StudentServiceInterface $student_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -33,13 +35,6 @@ final class AddSkillAction extends ApiController
         try {
             $student_id = new EntityId($id);
             $skill_id = new EntityId($request->skill_id);
-            $level = match ($request->level) {
-                1 => ProficiencyLevel::beginner(),
-                2 => ProficiencyLevel::intermediate(),
-                3, 4 => ProficiencyLevel::advanced(),
-                5 => ProficiencyLevel::expert(),
-                default => throw ApiException::badRequest('Invalid skill level'),
-            };
 
             $student = $this->student_service->findById($student_id);
             $this->validateEntityExists($student, 'Student not found');
@@ -47,7 +42,15 @@ final class AddSkillAction extends ApiController
             $skill = $this->student_service->findSkillById($skill_id);
             $this->validateEntityExists($skill, 'Skill not found');
 
+            $level = ProficiencyLevel::fromInt($request->level);
+
             $this->student_service->addSkill($student, $skill, $level);
+
+            // Инвалидируем кэш студента
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student',
+                'id' => $id,
+            ]));
 
             return $this->json(StudentResponse::fromEntity($student));
         } catch (DomainException $e) {

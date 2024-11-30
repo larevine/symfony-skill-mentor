@@ -40,8 +40,35 @@ enum SkillLevel: int
         };
     }
 
+    public static function fromLabel(string $label): self
+    {
+        return match ($label) {
+            'Начальный' => self::LEVEL_1,
+            'Ниже среднего' => self::LEVEL_2,
+            'Средний' => self::LEVEL_3,
+            'Выше среднего' => self::LEVEL_4,
+            'Продвинутый' => self::LEVEL_5,
+        };
+    }
+
+    public static function labels(): array
+    {
+        return array_map(static fn (self $level) => $level->getLabel(), self::cases());
+    }
+
     public function getValue(): int
     {
         return $this->value;
+    }
+
+    public static function choices(): array
+    {
+        return [
+            'Начальный' => self::LEVEL_1->value,
+            'Ниже среднего' => self::LEVEL_2->value,
+            'Средний' => self::LEVEL_3->value,
+            'Выше среднего' => self::LEVEL_4->value,
+            'Продвинутый' => self::LEVEL_5->value,
+        ];
     }
 }

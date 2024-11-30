@@ -10,6 +10,7 @@ use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\StudentResponse;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -20,6 +21,7 @@ final class RemoveSkillAction extends ApiController
 {
     public function __construct(
         private readonly StudentServiceInterface $student_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -36,6 +38,12 @@ final class RemoveSkillAction extends ApiController
             $this->validateEntityExists($skill, 'Skill not found');
 
             $this->student_service->removeSkill($student, $skill);
+
+            // Инвалидируем кэш студента
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student',
+                'id' => $id,
+            ]));
 
             return $this->json(StudentResponse::fromEntity($student));
         } catch (DomainException $e) {

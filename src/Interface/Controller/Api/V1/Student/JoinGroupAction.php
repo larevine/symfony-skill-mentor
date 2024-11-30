@@ -11,6 +11,7 @@ use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\StudentResponse;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,6 +23,7 @@ final class JoinGroupAction extends ApiController
     public function __construct(
         private readonly StudentServiceInterface $student_service,
         private readonly GroupServiceInterface $group_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -48,6 +50,16 @@ final class JoinGroupAction extends ApiController
             }
 
             $this->student_service->joinGroup($student, $group);
+
+            // Инвалидируем кэш студента и группы
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student',
+                'id' => $id,
+            ]));
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group',
+                'id' => $groupId,
+            ]));
 
             return $this->json(StudentResponse::fromEntity($student));
         } catch (DomainException $e) {

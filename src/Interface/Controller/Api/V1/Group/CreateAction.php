@@ -14,6 +14,7 @@ use App\Interface\DTO\CreateGroupRequest;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -28,6 +29,7 @@ final class CreateAction extends ApiController
         private readonly GroupServiceInterface $group_service,
         private readonly TeacherServiceInterface $teacher_service,
         private readonly SkillServiceInterface $skill_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -49,19 +51,24 @@ final class CreateAction extends ApiController
                 $teacher,
             );
 
+            // Инвалидируем кэш списка групп
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group_list',
+                'id' => 'all',
+            ]));
+
             // Добавляем требуемые навыки
             foreach ($request->required_skills as $skill_data) {
                 $skill_id = new EntityId($skill_data['skill_id']);
                 $skill = $this->skill_service->findById($skill_id);
                 $this->validateEntityExists($skill, 'Skill not found');
 
-                $level = match ($skill_data['level']) {
-                    1 => new ProficiencyLevel('beginner'),
-                    2 => new ProficiencyLevel('intermediate'),
-                    3, 4 => new ProficiencyLevel('advanced'),
-                    5 => new ProficiencyLevel('expert'),
-                    default => throw ApiException::validationError('Invalid skill level'),
-                };
+                try {
+                    $level = ProficiencyLevel::fromInt($skill_data['level']);
+                } catch (DomainException) {
+                    throw ApiException::validationError('Invalid skill level');
+                }
+
                 $this->group_service->addSkill($group, $skill, $level);
             }
 

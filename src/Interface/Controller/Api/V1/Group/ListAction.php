@@ -8,11 +8,13 @@ use App\Domain\Service\GroupServiceInterface;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupFilterRequest;
 use App\Interface\DTO\GroupResponse;
+use App\Interface\DTO\ListResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
@@ -21,30 +23,41 @@ final class ListAction extends ApiController
 {
     public function __construct(
         private readonly GroupServiceInterface $group_service,
+        private readonly TagAwareAdapterInterface $group_pool,
+        private readonly int $cache_ttl,
     ) {
     }
 
-    public function __invoke(Request $request): JsonResponse
-    {
+    public function __invoke(
+        #[MapQueryString] GroupFilterRequest $filter,
+    ): JsonResponse {
         try {
-            $filter = new GroupFilterRequest(
-                search: $request->query->get('search'),
-                teacher_ids: $request->query->all('teacher_ids'),
-                required_skill_ids: $request->query->all('required_skill_ids'),
-                has_available_spots: $request->query->getBoolean('has_available_spots'),
-                page: (int) $request->query->get('page', 1),
-                per_page: (int) $request->query->get('per_page', 20),
-                sort_by: $request->query->all('sort_by'),
-                sort_order: $request->query->get('sort_order', 'asc'),
-            );
+            $cache_key = 'group_list_' . md5(serialize($filter));
+            $cache_item = $this->group_pool->getItem($cache_key);
+
+            if ($cache_item->isHit()) {
+                return $this->json($cache_item->get());
+            }
 
             $groups = $this->group_service->findByFilter($filter);
             $total = $this->group_service->countByFilter($filter);
 
-            return $this->json([
-                'items' => array_map(fn ($group) => GroupResponse::fromEntity($group), $groups),
-                'total' => $total,
-            ]);
+            $response = ListResponse::create(
+                items: array_map(
+                    static fn ($group) => GroupResponse::fromEntity($group),
+                    $groups,
+                ),
+                total: $total,
+                page: $filter->page,
+                per_page: $filter->per_page,
+            );
+
+            $cache_item->set($response);
+            $cache_item->tag(['groups']);
+            $cache_item->expiresAfter($this->cache_ttl);
+            $this->group_pool->save($cache_item);
+
+            return $this->json($response);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

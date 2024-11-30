@@ -33,16 +33,16 @@ use App\Interface\GraphQL\Resolver\GroupStatsResolver;
         ),
     ]
 )]
-final class GroupStatistics
+final readonly class GroupStatistics
 {
     public function __construct(
-        private readonly int $id,
-        private readonly string $name,
-        private readonly ?int $students_count,
-        private readonly ?float $capacity_percentage,
-        private readonly ?bool $is_at_capacity,
-        private readonly ?int $available_slots,
-        private readonly ?string $teacher_name,
+        private int $id,
+        private string $name,
+        private ?int $students_count,
+        private ?float $capacity_percentage,
+        private ?bool $is_at_capacity,
+        private ?int $available_slots,
+        private ?string $teacher_name,
     ) {
     }
 

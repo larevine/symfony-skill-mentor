@@ -11,6 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
 #[Route('/teachers/{id}/groups', name: 'web_teacher_groups', methods: ['GET', 'POST'])]
 final class ManageGroupsAction extends AbstractController
@@ -18,6 +19,7 @@ final class ManageGroupsAction extends AbstractController
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
         private readonly GroupServiceInterface $group_service,
+        private readonly ProducerInterface $teacher_groups_producer
     ) {
     }
 
@@ -31,22 +33,13 @@ final class ManageGroupsAction extends AbstractController
 
         if ($request->isMethod('POST')) {
             $group_ids = $request->request->all('groups');
-            $current_groups = $teacher->getTeachingGroups();
 
-            // Remove old groups
-            foreach ($current_groups as $group) {
-                $this->teacher_service->removeFromGroup($teacher, $group);
-            }
+            $this->teacher_groups_producer->publish(json_encode([
+                'teacher_id' => $id,
+                'group_ids' => $group_ids
+            ]));
 
-            // Add new groups
-            foreach ($group_ids as $group_id) {
-                $group = $this->group_service->findById(new EntityId((int)$group_id));
-                if ($group !== null && $teacher->hasRequiredSkills($group)) {
-                    $this->teacher_service->assignToGroup($teacher, $group);
-                }
-            }
-
-            $this->addFlash('success', 'Teacher groups updated successfully');
+            $this->addFlash('success', 'Teacher groups update has been scheduled');
 
             return $this->redirectToRoute('web_teacher_list');
         }

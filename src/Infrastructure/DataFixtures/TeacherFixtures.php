@@ -35,6 +35,14 @@ class TeacherFixtures extends Fixture
                 'surname' => 'Smith',
                 'max_groups' => 2,
             ],
+            [
+                'email' => 'admin@example.com',
+                'password' => 'password123',
+                'name' => 'Admin',
+                'surname' => 'User',
+                'max_groups' => 1,
+                'roles' => ['ROLE_ADMIN', 'ROLE_TEACHER'],
+            ],
         ];
 
         foreach ($teachers_data as $teacher_data) {
@@ -45,7 +53,7 @@ class TeacherFixtures extends Fixture
                 first_name: $name->getFirstName(),
                 last_name: $name->getLastName(),
                 email: $email->getValue(),
-                roles: ['ROLE_TEACHER'],
+                roles: $teacher_data['roles'] ?? ['ROLE_TEACHER'],
                 max_groups: $teacher_data['max_groups'],
             );
 

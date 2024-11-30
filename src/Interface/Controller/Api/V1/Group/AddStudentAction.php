@@ -11,6 +11,7 @@ use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -23,6 +24,7 @@ final class AddStudentAction extends ApiController
     public function __construct(
         private readonly GroupServiceInterface $group_service,
         private readonly StudentServiceInterface $student_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -42,7 +44,19 @@ final class AddStudentAction extends ApiController
             $this->student_service->joinGroup($student, $group);
             $this->group_service->addStudent($group, $student);
 
-            return $this->json(GroupResponse::fromEntity($group), Response::HTTP_CREATED);
+            // Инвалидируем кэш группы и студента
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group',
+                'id' => $group_id->getValue(),
+            ]));
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student',
+                'id' => $student_id->getValue(),
+            ]));
+
+            return $this->json(GroupResponse::fromEntity(
+                $this->group_service->findById($group_id)
+            ), Response::HTTP_CREATED);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

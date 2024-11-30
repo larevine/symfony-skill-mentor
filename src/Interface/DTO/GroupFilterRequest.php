@@ -32,7 +32,7 @@ readonly class GroupFilterRequest
         #[Assert\Type('boolean')]
         public ?bool $has_available_spots = null,
         #[Assert\Type('integer')]
-        #[Assert\PositiveOrZero]
+        #[Assert\Range(min: 1)]
         public int $page = 1,
         #[Assert\Type('integer')]
         #[Assert\Range(min: 1, max: 100)]

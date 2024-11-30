@@ -12,6 +12,7 @@ use App\Interface\DTO\GroupResponse;
 use App\Interface\DTO\UpdateSkillProficiencyRequest;
 use App\Interface\Exception\ApiException;
 use DomainException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -23,6 +24,7 @@ final class AddSkillAction extends ApiController
 {
     public function __construct(
         private readonly GroupServiceInterface $group_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -39,9 +41,19 @@ final class AddSkillAction extends ApiController
             $skill = $this->group_service->findSkillById(new EntityId($request->skill_id));
             $this->validateEntityExists($skill, 'Skill not found');
 
-            $level = new ProficiencyLevel($request->level);
+            try {
+                $level = ProficiencyLevel::fromInt($request->level);
+            } catch (DomainException) {
+                throw ApiException::validationError('Invalid skill level');
+            }
 
-            $this->group_service->addRequiredSkill($group, $skill, $level);
+            $this->group_service->addSkill($group, $skill, $level);
+
+            // Инвалидируем кэш группы
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group',
+                'id' => $id,
+            ]));
 
             return $this->json(GroupResponse::fromEntity($group));
         } catch (DomainException $e) {

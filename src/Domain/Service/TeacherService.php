@@ -17,13 +17,15 @@ use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Interface\DTO\TeacherFilterRequest;
 use DomainException;
-use App\Domain\Service\TeacherServiceInterface;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
 readonly class TeacherService implements TeacherServiceInterface
 {
     public function __construct(
         private TeacherRepositoryInterface $teacher_repository,
         private SkillRepositoryInterface $skill_repository,
+        private ProducerInterface $teacher_skills_producer,
+        private ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -123,6 +125,11 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $this->teacher_repository->save($teacher);
 
+            // Invalidate teacher list cache
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher_list'
+            ]));
+
             return $teacher;
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
@@ -137,6 +144,12 @@ readonly class TeacherService implements TeacherServiceInterface
                 $this->teacher_repository
             );
             $workload->assignGroup($group);
+
+            // Invalidate teacher cache
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher',
+                'id' => $teacher->getId()
+            ]));
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -150,6 +163,12 @@ readonly class TeacherService implements TeacherServiceInterface
                 $this->teacher_repository
             );
             $workload->removeGroup($group);
+
+            // Invalidate teacher cache
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher',
+                'id' => $teacher->getId()
+            ]));
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -162,6 +181,33 @@ readonly class TeacherService implements TeacherServiceInterface
             $this->teacher_repository
         );
         $aggregate->addSkill($skill, $level);
+
+        // Отправляем сообщение в очередь для асинхронной обработки
+        $this->publishTeacherSkills($teacher);
+
+        // Invalidate teacher cache
+        $this->cache_invalidation_producer->publish(json_encode([
+            'type' => 'teacher',
+            'id' => $teacher->getId()
+        ]));
+    }
+
+    public function publishTeacherSkills(Teacher $teacher): void
+    {
+        $skills = [];
+        foreach ($teacher->getSkills() as $proficiency) {
+            $skills[] = [
+                'skill_id' => $proficiency->getSkill()->getId(),
+                'level' => $proficiency->getLevel()->getValue()
+            ];
+        }
+
+        $message = [
+            'teacher_id' => $teacher->getId(),
+            'skills' => $skills
+        ];
+
+        $this->teacher_skills_producer->publish(json_encode($message));
     }
 
     public function removeSkill(Teacher $teacher, Skill $skill): void
@@ -171,6 +217,12 @@ readonly class TeacherService implements TeacherServiceInterface
             $this->teacher_repository
         );
         $aggregate->removeSkill($skill);
+
+        // Invalidate teacher cache
+        $this->cache_invalidation_producer->publish(json_encode([
+            'type' => 'teacher',
+            'id' => $teacher->getId()
+        ]));
     }
 
     public function update(
@@ -188,6 +240,17 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $workload->updatePersonalInfo($first_name, $last_name, $email);
             $workload->updateMaxGroups($max_groups);
+
+            // Invalidate teacher cache
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher',
+                'id' => $teacher->getId()
+            ]));
+
+            // Also invalidate teacher list since personal info changed
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher_list'
+            ]));
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -201,6 +264,11 @@ readonly class TeacherService implements TeacherServiceInterface
     public function delete(Teacher $teacher): void
     {
         $this->teacher_repository->remove($teacher);
+
+        // Invalidate teacher list cache
+        $this->cache_invalidation_producer->publish(json_encode([
+            'type' => 'teacher_list'
+        ]));
     }
 
     public function findSkillById(EntityId $id): ?Skill

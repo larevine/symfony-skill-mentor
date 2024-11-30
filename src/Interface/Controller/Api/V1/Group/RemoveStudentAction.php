@@ -11,6 +11,7 @@ use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,6 +23,7 @@ final class RemoveStudentAction extends ApiController
     public function __construct(
         private readonly GroupServiceInterface $group_service,
         private readonly StudentServiceInterface $student_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -40,6 +42,16 @@ final class RemoveStudentAction extends ApiController
             // Используем оба сервиса для поддержания консистентности
             $this->student_service->leaveGroup($student, $group);
             $this->group_service->removeStudent($group, $student);
+
+            // Инвалидируем кэш группы и студента
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'group',
+                'id' => $id,
+            ]));
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student',
+                'id' => $student_id,
+            ]));
 
             return $this->json(GroupResponse::fromEntity($group));
         } catch (DomainException $e) {

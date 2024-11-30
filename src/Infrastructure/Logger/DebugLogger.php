@@ -6,7 +6,7 @@ namespace App\Infrastructure\Logger;
 
 use Psr\Log\LoggerInterface;
 
-class DebugLogger
+readonly class DebugLogger
 {
     public function __construct(private LoggerInterface $logger)
     {

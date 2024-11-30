@@ -12,6 +12,9 @@ api_platform:
         stateless: true
         cache_headers:
             vary: ['Content-Type', 'Authorization', 'Origin']
+            public: true
+            max_age: 0
+            shared_max_age: 3600
         extra_properties:
             standard_put: true
             rfc_7807_compliant_errors: true
@@ -31,3 +34,9 @@ api_platform:
     graphql:
         enabled: true
         graphql_playground: false
+    doctrine:
+        enabled: true
+    eager_loading:
+        enabled: true
+        max_joins: 30
+        force_eager: false

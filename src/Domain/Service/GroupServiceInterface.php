@@ -97,6 +97,12 @@ interface GroupServiceInterface
     public function addSkill(Group $group, Skill $skill, ProficiencyLevel $level): void;
 
     /**
+     * Removes a skill from a group.
+     * @see GroupService::removeSkill()
+     */
+    public function removeSkill(Group $group, Skill $skill): void;
+
+    /**
      * Deletes a group.
      * @see GroupService::delete()
      */

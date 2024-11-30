@@ -1,28 +1,76 @@
 FROM php:8.3-fpm-alpine
 
-# Установить системные зависимости
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+RUN addgroup -g ${GROUP_ID} otus && \
+    adduser -D -u ${USER_ID} -G otus otus
+
+USER root
 RUN apk add --no-cache \
-    postgresql-dev \
+    $PHPIZE_DEPS \
+    autoconf \
+    build-base \
+    icu-dev \
+    libevent-dev \
+    openssl-dev \
+    zlib-dev \
+    libzip \
+    libzip-dev \
+    bzip2 \
     git \
-    zip \
-    unzip \
-    rabbitmq-c-dev \
+    libpng \
+    libpng-dev \
+    libjpeg \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    freetype \
+    freetype-dev \
+    postgresql-dev \
     linux-headers \
-    $PHPIZE_DEPS
+    libmemcached-dev \
+    rabbitmq-c \
+    rabbitmq-c-dev \
+    curl \
+    wget \
+    bash \
+    && rm -rf /var/cache/apk/*
 
-# Установить PHP-расширения
-RUN docker-php-ext-install pdo_pgsql sockets
+# Устанавливаем расширения PHP через docker-php-ext
+RUN docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ \
+    && docker-php-ext-install -j$(nproc) \
+        intl \
+        gd \
+        bcmath \
+        pcntl \
+        pdo_pgsql \
+        sockets \
+        zip
 
-# Установить PECL-расширения
-RUN pecl install xdebug xhprof amqp && \
-    docker-php-ext-enable xdebug amqp xhprof
+# Устанавливаем PECL расширения с конкретными версиями
+RUN pecl channel-update pecl.php.net \
+    && pecl install xdebug \
+    && pecl install redis \
+    && pecl install amqp \
+    && pecl install memcached \
+    && pecl install event \
+    && rm -rf /tmp/pear \
+    && echo "extension=amqp.so" > /usr/local/etc/php/conf.d/amqp.ini \
+    && echo "extension=redis.so" > /usr/local/etc/php/conf.d/redis.ini \
+    && echo "extension=event.so" > /usr/local/etc/php/conf.d/event.ini \
+    && echo "extension=memcached.so" > /usr/local/etc/php/conf.d/memcached.ini \
+    && echo "zend_extension=xdebug.so" > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
-# Установить Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Устанавливаем Composer
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
-# Копировать конфигурационные файлы PHP
+# Настраиваем рабочую директорию и права для пользователя
+RUN mkdir -p /app && \
+    chown -R otus:otus /app /usr/local/lib/php /usr/local/etc/php/conf.d
+
+USER otus
+
+WORKDIR /app
+
 COPY ./conf.d/php.ini /usr/local/etc/php/php.ini
 COPY ./conf.d/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-
-# Удалить временные файлы
-RUN rm -rf /tmp/pear

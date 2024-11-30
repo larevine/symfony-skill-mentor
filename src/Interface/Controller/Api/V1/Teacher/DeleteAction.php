@@ -9,6 +9,7 @@ use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -20,6 +21,7 @@ final class DeleteAction extends ApiController
 {
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -31,6 +33,12 @@ final class DeleteAction extends ApiController
             $this->validateEntityExists($teacher, 'Teacher not found');
 
             $this->teacher_service->delete($teacher);
+
+            // Инвалидируем кэш учителя
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'teacher',
+                'id' => $id,
+            ]));
 
             return $this->json(null, Response::HTTP_NO_CONTENT);
         } catch (DomainException $e) {

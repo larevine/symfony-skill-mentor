@@ -17,7 +17,6 @@ use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Interface\DTO\StudentFilterRequest;
 use DomainException;
-use App\Domain\Service\StudentServiceInterface;
 
 readonly class StudentService implements StudentServiceInterface
 {

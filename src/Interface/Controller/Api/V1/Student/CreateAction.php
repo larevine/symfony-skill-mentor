@@ -12,6 +12,7 @@ use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\CreateStudentRequest;
 use App\Interface\DTO\StudentResponse;
 use App\Interface\Exception\ApiException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -23,6 +24,7 @@ final class CreateAction extends ApiController
 {
     public function __construct(
         private readonly StudentServiceInterface $student_service,
+        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -39,6 +41,12 @@ final class CreateAction extends ApiController
                 $email->getValue(),
                 $request->initial_skills ?? [],
             );
+
+            // Инвалидируем кэш списка студентов
+            $this->cache_invalidation_producer->publish(json_encode([
+                'type' => 'student_list',
+                'id' => 'all',
+            ]));
 
             return $this->json(
                 StudentResponse::fromEntity($student),
