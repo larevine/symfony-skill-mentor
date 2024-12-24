@@ -19,10 +19,14 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - otus-postgresql
-      - otus-redis
-      - otus-rabbitmq
-      - otus-memcached
+      otus-postgresql:
+        condition: service_healthy
+      otus-rabbitmq:
+        condition: service_healthy
+      otus-redis:
+        condition: service_started
+      otus-memcached:
+        condition: service_started
 
   otus-nginx:
     image: nginx:${NGINX_VERSION}-alpine
@@ -123,14 +127,14 @@ services:
     image: rabbitmq:3.12-management-alpine
     container_name: ${RABBITMQ_CONTAINER_NAME}
     hostname: rabbit-mq
-    ports:
-      - "15672:15672"  # Веб-интерфейс управления
-      - "5672:5672"    # Основной AMQP порт
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -146,8 +150,16 @@ services:
     volumes:
       - ./:/app
     depends_on:
-      - otus-rabbitmq
-      - otus-redis
+      otus-symfony:
+        condition: service_started
+      otus-postgresql:
+        condition: service_healthy
+      otus-rabbitmq:
+        condition: service_healthy
+      otus-redis:
+        condition: service_started
+      otus-memcached:
+        condition: service_started
     environment:
       RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@${RABBITMQ_CONTAINER_NAME}:5672
 

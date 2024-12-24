@@ -14,7 +14,6 @@ use App\Interface\DTO\CreateGroupRequest;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
-use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -29,7 +28,6 @@ final class CreateAction extends ApiController
         private readonly GroupServiceInterface $group_service,
         private readonly TeacherServiceInterface $teacher_service,
         private readonly SkillServiceInterface $skill_service,
-        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -50,12 +48,6 @@ final class CreateAction extends ApiController
                 $request->max_size,
                 $teacher,
             );
-
-            // Инвалидируем кэш списка групп
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'group_list',
-                'id' => 'all',
-            ]));
 
             // Добавляем требуемые навыки
             foreach ($request->required_skills as $skill_data) {

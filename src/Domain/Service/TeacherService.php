@@ -8,6 +8,11 @@ use App\Domain\Aggregate\TeacherWorkloadAggregate;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Skill;
 use App\Domain\Entity\Teacher;
+use App\Domain\Event\Teacher\TeacherCreatedEvent;
+use App\Domain\Event\Teacher\TeacherDeletedEvent;
+use App\Domain\Event\Teacher\TeacherSkillAddedEvent;
+use App\Domain\Event\Teacher\TeacherSkillRemovedEvent;
+use App\Domain\Event\Teacher\TeacherUpdatedEvent;
 use App\Domain\Exception\TeacherException;
 use App\Domain\Repository\SkillRepositoryInterface;
 use App\Domain\Repository\TeacherRepositoryInterface;
@@ -25,7 +30,7 @@ readonly class TeacherService implements TeacherServiceInterface
         private TeacherRepositoryInterface $teacher_repository,
         private SkillRepositoryInterface $skill_repository,
         private ProducerInterface $teacher_skills_producer,
-        private ProducerInterface $cache_invalidation_producer,
+        private ProducerInterface $domain_events_producer,
     ) {
     }
 
@@ -125,10 +130,18 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $this->teacher_repository->save($teacher);
 
-            // Invalidate teacher list cache
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher_list'
-            ]));
+            $event = new TeacherCreatedEvent(
+                $teacher->getId(),
+                [
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
 
             return $teacher;
         } catch (DomainException $e) {
@@ -145,11 +158,14 @@ readonly class TeacherService implements TeacherServiceInterface
             );
             $workload->assignGroup($group);
 
-            // Invalidate teacher cache
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher',
-                'id' => $teacher->getId()
-            ]));
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -164,11 +180,14 @@ readonly class TeacherService implements TeacherServiceInterface
             );
             $workload->removeGroup($group);
 
-            // Invalidate teacher cache
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher',
-                'id' => $teacher->getId()
-            ]));
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -182,14 +201,79 @@ readonly class TeacherService implements TeacherServiceInterface
         );
         $aggregate->addSkill($skill, $level);
 
-        // Отправляем сообщение в очередь для асинхронной обработки
         $this->publishTeacherSkills($teacher);
 
-        // Invalidate teacher cache
-        $this->cache_invalidation_producer->publish(json_encode([
-            'type' => 'teacher',
-            'id' => $teacher->getId()
-        ]));
+        $event = new TeacherSkillAddedEvent(
+            $teacher->getId(),
+            $skill->getId(),
+            $level->getLabel()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
+    }
+
+    public function removeSkill(Teacher $teacher, Skill $skill): void
+    {
+        $aggregate = new TeacherWorkloadAggregate(
+            new EntityId($teacher->getId()),
+            $this->teacher_repository
+        );
+        $aggregate->removeSkill($skill);
+
+        $event = new TeacherSkillRemovedEvent(
+            $teacher->getId(),
+            $skill->getId()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
+    }
+
+    public function update(
+        Teacher $teacher,
+        string $first_name,
+        string $last_name,
+        string $email,
+        int $max_groups
+    ): void {
+        try {
+            $workload = new TeacherWorkloadAggregate(
+                new EntityId($teacher->getId()),
+                $this->teacher_repository
+            );
+
+            $workload->updatePersonalInfo($first_name, $last_name, $email);
+            $workload->updateMaxGroups($max_groups);
+
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                [
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
+        } catch (DomainException $e) {
+            throw TeacherException::fromDomainException($e);
+        }
+    }
+
+    public function delete(Teacher $teacher): void
+    {
+        $this->teacher_repository->remove($teacher);
+
+        $event = new TeacherDeletedEvent($teacher->getId());
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 
     public function publishTeacherSkills(Teacher $teacher): void
@@ -210,65 +294,9 @@ readonly class TeacherService implements TeacherServiceInterface
         $this->teacher_skills_producer->publish(json_encode($message));
     }
 
-    public function removeSkill(Teacher $teacher, Skill $skill): void
-    {
-        $aggregate = new TeacherWorkloadAggregate(
-            new EntityId($teacher->getId()),
-            $this->teacher_repository
-        );
-        $aggregate->removeSkill($skill);
-
-        // Invalidate teacher cache
-        $this->cache_invalidation_producer->publish(json_encode([
-            'type' => 'teacher',
-            'id' => $teacher->getId()
-        ]));
-    }
-
-    public function update(
-        Teacher $teacher,
-        string $first_name,
-        string $last_name,
-        string $email,
-        int $max_groups
-    ): void {
-        try {
-            $workload = new TeacherWorkloadAggregate(
-                new EntityId($teacher->getId()),
-                $this->teacher_repository
-            );
-
-            $workload->updatePersonalInfo($first_name, $last_name, $email);
-            $workload->updateMaxGroups($max_groups);
-
-            // Invalidate teacher cache
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher',
-                'id' => $teacher->getId()
-            ]));
-
-            // Also invalidate teacher list since personal info changed
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher_list'
-            ]));
-        } catch (DomainException $e) {
-            throw TeacherException::fromDomainException($e);
-        }
-    }
-
     public function save(Teacher $teacher): void
     {
         $this->teacher_repository->save($teacher);
-    }
-
-    public function delete(Teacher $teacher): void
-    {
-        $this->teacher_repository->remove($teacher);
-
-        // Invalidate teacher list cache
-        $this->cache_invalidation_producer->publish(json_encode([
-            'type' => 'teacher_list'
-        ]));
     }
 
     public function findSkillById(EntityId $id): ?Skill

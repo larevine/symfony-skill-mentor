@@ -9,6 +9,13 @@ use App\Domain\Aggregate\StudentSkillsAggregate;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Skill;
 use App\Domain\Entity\Student;
+use App\Domain\Event\Student\StudentCreatedEvent;
+use App\Domain\Event\Student\StudentDeletedEvent;
+use App\Domain\Event\Student\StudentJoinedGroupEvent;
+use App\Domain\Event\Student\StudentLeftGroupEvent;
+use App\Domain\Event\Student\StudentSkillAddedEvent;
+use App\Domain\Event\Student\StudentSkillRemovedEvent;
+use App\Domain\Event\Student\StudentUpdatedEvent;
 use App\Domain\Exception\StudentException;
 use App\Domain\Repository\GroupRepositoryInterface;
 use App\Domain\Repository\StudentRepositoryInterface;
@@ -17,6 +24,7 @@ use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Interface\DTO\StudentFilterRequest;
 use DomainException;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
 readonly class StudentService implements StudentServiceInterface
 {
@@ -24,6 +32,7 @@ readonly class StudentService implements StudentServiceInterface
         private StudentRepositoryInterface $student_repository,
         private SkillRepositoryInterface $skill_repository,
         private GroupRepositoryInterface $group_repository,
+        private ProducerInterface $domain_events_producer,
     ) {
     }
 
@@ -103,6 +112,15 @@ readonly class StudentService implements StudentServiceInterface
                 $this->group_repository
             );
             $group_aggregate->addStudent($student);
+
+            $event = new StudentJoinedGroupEvent(
+                $student->getId(),
+                $group->getId()
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw StudentException::fromDomainException($e);
         }
@@ -120,6 +138,15 @@ readonly class StudentService implements StudentServiceInterface
                 $this->group_repository
             );
             $group_aggregate->removeStudent($student);
+
+            $event = new StudentLeftGroupEvent(
+                $student->getId(),
+                $group->getId()
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw StudentException::fromDomainException($e);
         }
@@ -132,6 +159,16 @@ readonly class StudentService implements StudentServiceInterface
             $this->student_repository
         );
         $aggregate->addSkill($skill, $level);
+
+        $event = new StudentSkillAddedEvent(
+            $student->getId(),
+            $skill->getId(),
+            $level->getLabel()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 
     public function removeSkill(Student $student, Skill $skill): void
@@ -141,6 +178,15 @@ readonly class StudentService implements StudentServiceInterface
             $this->student_repository
         );
         $aggregate->removeSkill($skill);
+
+        $event = new StudentSkillRemovedEvent(
+            $student->getId(),
+            $skill->getId()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 
     public function updateSkillLevel(Student $student, Skill $skill, ProficiencyLevel $level): void
@@ -151,6 +197,16 @@ readonly class StudentService implements StudentServiceInterface
                 $this->student_repository
             );
             $student_aggregate->updateSkillLevel($skill, $level);
+
+            $event = new StudentSkillAddedEvent(
+                $student->getId(),
+                $skill->getId(),
+                $level->getLabel()
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw StudentException::fromDomainException($e);
         }
@@ -183,8 +239,31 @@ readonly class StudentService implements StudentServiceInterface
                     }
 
                     $student_aggregate->addSkill($skill, $skill_data['level']);
+
+                    $event = new StudentSkillAddedEvent(
+                        $student->getId(),
+                        $skill->getId(),
+                        $skill_data['level']->getLabel()
+                    );
+                    $this->domain_events_producer->publish(
+                        json_encode($event->toArray()),
+                        $event->getEventName()
+                    );
                 }
             }
+
+            $event = new StudentCreatedEvent(
+                $student->getId(),
+                [
+                    'first_name' => $student->getFirstName(),
+                    'last_name' => $student->getLastName(),
+                    'email' => $student->getEmail(),
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
 
             return $student;
         } catch (DomainException $e) {
@@ -206,6 +285,19 @@ readonly class StudentService implements StudentServiceInterface
 
             // Update personal info through aggregate
             $student_aggregate->updatePersonalInfo($first_name, $last_name, $email);
+
+            $event = new StudentUpdatedEvent(
+                $student->getId(),
+                [
+                    'first_name' => $student->getFirstName(),
+                    'last_name' => $student->getLastName(),
+                    'email' => $student->getEmail(),
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw StudentException::fromDomainException($e);
         }
@@ -214,5 +306,11 @@ readonly class StudentService implements StudentServiceInterface
     public function delete(Student $student): void
     {
         $this->student_repository->remove($student);
+
+        $event = new StudentDeletedEvent($student->getId());
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 }

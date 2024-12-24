@@ -77,7 +77,7 @@ services:
             $teacher_repository: '@App\Domain\Repository\TeacherRepositoryInterface'
             $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
             $teacher_skills_producer: '@old_sound_rabbit_mq.teacher_skills_producer'
-            $cache_invalidation_producer: '@cache_invalidation_producer'
+            $domain_events_producer: '@old_sound_rabbit_mq.domain_events_producer'
 
     App\Domain\Service\StudentService:
         arguments:
@@ -123,6 +123,32 @@ services:
         calls:
             - [setExchangeOptions, [{ name: 'cache_invalidation', type: direct }]]
 
+    domain_events_producer:
+        class: OldSound\RabbitMqBundle\RabbitMq\Producer
+        arguments: ['@old_sound_rabbit_mq.connection.default']
+        calls:
+            - [setExchangeOptions, [{ name: 'domain_events', type: direct }]]
+
+    App\Infrastructure\Logger\DeprecationErrorHandler:
+        arguments:
+            $deprecationLogger: '@monolog.logger.deprecation'
+        calls:
+            - [register]
+
+    App\Infrastructure\Logger\NonDeprecationLogger:
+        arguments:
+            $mainLogger: '@monolog.logger.cache_invalidation'
+            $deprecationLogger: '@monolog.logger.deprecation'
+
+    OldSound\RabbitMqBundle\RabbitMq\Consumer:
+        calls:
+            - [setLogger, ['@App\Infrastructure\Logger\NonDeprecationLogger']]
+
+    # Для MessageHandler используем внедрение через конструктор
+    App\Infrastructure\MessageHandler\CacheInvalidationMessageHandler:
+        arguments:
+            $logger: '@App\Infrastructure\Logger\NonDeprecationLogger'
+
     # API Controllers
     App\Interface\Controller\Api\V1\:
         resource: '../src/Interface/Controller/Api/V1/'
@@ -152,7 +178,3 @@ services:
     App\Interface\Controller\Api\V1\Group\ListAction:
         arguments:
             $cache_ttl: '%cache_ttl%'
-
-    App\Infrastructure\MessageHandler\CacheInvalidationMessageHandler:
-        arguments:
-            $logger: '@monolog.logger.cache_invalidation'

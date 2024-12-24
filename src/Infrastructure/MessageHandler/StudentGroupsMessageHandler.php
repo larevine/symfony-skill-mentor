@@ -8,30 +8,37 @@ use App\Domain\Service\StudentServiceInterface;
 use App\Domain\Service\GroupServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\Dto\Message\StudentGroupsMessage;
+use Doctrine\ORM\EntityManagerInterface;
 use OldSound\RabbitMqBundle\RabbitMq\ConsumerInterface;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use PhpAmqpLib\Message\AMQPMessage;
-use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
-readonly class StudentGroupsMessageHandler implements ConsumerInterface
+class StudentGroupsMessageHandler extends AbstractMessageHandler implements ConsumerInterface
 {
     public function __construct(
-        private StudentServiceInterface $student_service,
-        private GroupServiceInterface $group_service,
-        private CacheItemPoolInterface $student_pool,
-        private CacheItemPoolInterface $group_pool,
-        private LoggerInterface $logger,
+        EntityManagerInterface $entity_manager,
+        LoggerInterface $logger,
+        private readonly StudentServiceInterface $student_service,
+        private readonly GroupServiceInterface $group_service,
+        private readonly ProducerInterface $domain_events_producer,
     ) {
+        parent::__construct($entity_manager, $logger);
     }
 
     public function execute(AMQPMessage $msg): int
+    {
+        return $this->processMessage($msg);
+    }
+
+    protected function processMessage(AMQPMessage $msg): int
     {
         try {
             $message = StudentGroupsMessage::fromArray(json_decode($msg->getBody(), true));
 
             $this->logger->info('Processing student groups message', [
                 'student_id' => $message->getStudentId(),
-                'group_count' => count($message->getGroupIds())
+                'groups_count' => count($message->getGroupIds())
             ]);
 
             $student = $this->student_service->findById(new EntityId($message->getStudentId()));
@@ -42,33 +49,57 @@ readonly class StudentGroupsMessageHandler implements ConsumerInterface
                 return self::MSG_REJECT;
             }
 
-            // Удаляем студента из всех групп
+            // Удаляем старые группы
             foreach ($student->getGroups() as $group) {
-                $this->group_service->removeStudent($group, $student);
+                $this->group_service->removeStudent($student, $group);
+
+                // Публикуем событие о выходе из группы
+                $this->domain_events_producer->publish(
+                    json_encode([
+                        'event' => 'student.left_group',
+                        'payload' => [
+                            'student_id' => $student->getId(),
+                            'group_id' => $group->getId()
+                        ]
+                    ]),
+                    'student.left_group'
+                );
             }
 
-            // Добавляем студента в новые группы
+            // Добавляем новые группы
             foreach ($message->getGroupIds() as $group_id) {
                 $group = $this->group_service->findById(new EntityId($group_id));
-                if ($group === null) {
+                if ($group !== null) {
+                    $this->group_service->addStudent($student, $group);
+
+                    // Публикуем событие о входе в группу
+                    $this->domain_events_producer->publish(
+                        json_encode([
+                            'event' => 'student.joined_group',
+                            'payload' => [
+                                'student_id' => $student->getId(),
+                                'group_id' => $group->getId()
+                            ]
+                        ]),
+                        'student.joined_group'
+                    );
+                } else {
                     $this->logger->warning('Group not found', [
                         'group_id' => $group_id
                     ]);
-                    continue;
                 }
-
-                $this->group_service->addStudent($group, $student);
             }
 
-            // Инвалидируем кэш
-            $this->student_pool->deleteItem('student_' . $message->getStudentId());
-            foreach ($message->getGroupIds() as $group_id) {
-                $this->group_pool->deleteItem('group_' . $group_id);
-            }
+            $this->logger->info('Student groups updated successfully', [
+                'student_id' => $message->getStudentId()
+            ]);
 
             return self::MSG_ACK;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error processing student groups message: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            $this->logger->error('Error processing student groups message', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return self::MSG_REJECT;
         }
     }

@@ -18,7 +18,7 @@ abstract class AbstractDeadLetterMessageHandler implements ConsumerInterface
         try {
             $data = json_decode($msg->getBody(), true);
             $headers = $msg->get_properties();
-            
+
             // Логируем информацию о неуспешном сообщении
             $this->logger->error('Dead letter message received', [
                 'queue' => static::getQueueName(),

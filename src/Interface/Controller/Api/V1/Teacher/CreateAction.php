@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Teacher;
 
-use DomainException;
 use App\Domain\Service\TeacherServiceInterface;
+use App\Domain\Event\Teacher\TeacherCreatedEvent;
 use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\PersonName;
 use App\Interface\Controller\Api\V1\ApiController;
@@ -25,7 +25,7 @@ final class CreateAction extends ApiController
 {
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
-        private readonly ProducerInterface $cache_invalidation_producer,
+        private readonly ProducerInterface $domain_events_producer,
     ) {
     }
 
@@ -43,14 +43,8 @@ final class CreateAction extends ApiController
                 max_groups: $request->max_groups,
             );
 
-            // Инвалидируем кэш учителей (список)
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher_list',
-                'id' => 'all',
-            ]));
-
             return $this->json(TeacherResponse::fromEntity($teacher), Response::HTTP_CREATED);
-        } catch (DomainException $e) {
+        } catch (\DomainException $e) {
             throw ApiException::fromDomainException($e);
         }
     }

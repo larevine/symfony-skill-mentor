@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Teacher;
 
-use DomainException;
 use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
@@ -21,7 +20,6 @@ final class DeleteAction extends ApiController
 {
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
-        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -34,14 +32,8 @@ final class DeleteAction extends ApiController
 
             $this->teacher_service->delete($teacher);
 
-            // Инвалидируем кэш учителя
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher',
-                'id' => $id,
-            ]));
-
             return $this->json(null, Response::HTTP_NO_CONTENT);
-        } catch (DomainException $e) {
+        } catch (\DomainException $e) {
             throw ApiException::fromDomainException($e);
         }
     }

@@ -11,19 +11,18 @@ use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
-use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/groups/{id}/teacher/{teacher_id}', methods: ['PUT'])]
+#[Route('/v1/groups/{id}/teacher/{teacher_id}', methods: ['POST'])]
 final class AssignTeacherAction extends ApiController
 {
     public function __construct(
         private readonly GroupServiceInterface $group_service,
         private readonly TeacherServiceInterface $teacher_service,
-        private readonly ProducerInterface $cache_invalidation_producer,
     ) {
     }
 
@@ -39,21 +38,9 @@ final class AssignTeacherAction extends ApiController
             $teacher = $this->teacher_service->findById($teacher_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 
-            // Используем оба сервиса для поддержания консистентности
-            $this->teacher_service->assignToGroup($teacher, $group);
             $this->group_service->assignTeacher($group, $teacher);
 
-            // Инвалидируем кэш группы и учителя
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'group',
-                'id' => $id,
-            ]));
-            $this->cache_invalidation_producer->publish(json_encode([
-                'type' => 'teacher',
-                'id' => $teacher_id,
-            ]));
-
-            return $this->json(GroupResponse::fromEntity($group));
+            return $this->json(GroupResponse::fromEntity($group), Response::HTTP_OK);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

@@ -9,22 +9,30 @@ use App\Domain\Service\SkillServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Domain\Dto\Message\TeacherSkillsMessage;
+use Doctrine\ORM\EntityManagerInterface;
 use OldSound\RabbitMqBundle\RabbitMq\ConsumerInterface;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use PhpAmqpLib\Message\AMQPMessage;
-use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
-readonly class TeacherSkillsMessageHandler implements ConsumerInterface
+class TeacherSkillsMessageHandler extends AbstractMessageHandler implements ConsumerInterface
 {
     public function __construct(
-        private TeacherServiceInterface $teacher_service,
-        private SkillServiceInterface $skill_service,
-        private CacheItemPoolInterface $teacher_pool,
-        private LoggerInterface $logger,
+        EntityManagerInterface $entity_manager,
+        LoggerInterface $logger,
+        private readonly TeacherServiceInterface $teacher_service,
+        private readonly SkillServiceInterface $skill_service,
+        private readonly ProducerInterface $domain_events_producer,
     ) {
+        parent::__construct($entity_manager, $logger);
     }
 
     public function execute(AMQPMessage $msg): int
+    {
+        return $this->processMessage($msg);
+    }
+
+    protected function processMessage(AMQPMessage $msg): int
     {
         try {
             $message = TeacherSkillsMessage::fromArray(json_decode($msg->getBody(), true));
@@ -45,6 +53,18 @@ readonly class TeacherSkillsMessageHandler implements ConsumerInterface
             // Удаляем старые навыки
             foreach ($teacher->getSkills() as $skill) {
                 $this->teacher_service->removeSkill($teacher, $skill->getSkill());
+
+                // Публикуем событие об удалении навыка
+                $this->domain_events_producer->publish(
+                    json_encode([
+                        'event' => 'teacher.skill_removed',
+                        'payload' => [
+                            'teacher_id' => $teacher->getId(),
+                            'skill_id' => $skill->getSkill()->getId()
+                        ]
+                    ]),
+                    'teacher.skill_removed'
+                );
             }
 
             // Добавляем новые навыки
@@ -53,15 +73,25 @@ readonly class TeacherSkillsMessageHandler implements ConsumerInterface
                 if ($skill !== null) {
                     $level = new ProficiencyLevel($skill_data['level']);
                     $this->teacher_service->addSkill($teacher, $skill, $level);
+
+                    // Публикуем событие о добавлении навыка
+                    $this->domain_events_producer->publish(
+                        json_encode([
+                            'event' => 'teacher.skill_added',
+                            'payload' => [
+                                'teacher_id' => $teacher->getId(),
+                                'skill_id' => $skill->getId(),
+                                'level' => $level->getValue()
+                            ]
+                        ]),
+                        'teacher.skill_added'
+                    );
                 } else {
                     $this->logger->warning('Skill not found', [
                         'skill_id' => $skill_data['skill_id']
                     ]);
                 }
             }
-
-            // Инвалидируем кэш
-            $this->teacher_pool->deleteItem('teacher_' . $message->getTeacherId());
 
             $this->logger->info('Teacher skills updated successfully', [
                 'teacher_id' => $message->getTeacherId()

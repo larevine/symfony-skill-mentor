@@ -3,37 +3,75 @@ old_sound_rabbit_mq:
         default:
             url: '%env(RABBITMQ_URL)%'
     producers:
+        domain_events:
+            connection: default
+            exchange_options:
+                name: 'domain_events'
+                type: topic
+            default_routing_key: 'default'
         teacher_skills:
             connection: default
             exchange_options:
                 name: 'teacher_skills'
                 type: direct
+            default_routing_key: 'teacher_skills'
         teacher_groups:
             connection: default
             exchange_options:
                 name: 'teacher_groups'
                 type: direct
+            default_routing_key: 'teacher_groups'
         cache_invalidation:
             connection: default
             exchange_options:
                 name: 'cache_invalidation'
                 type: direct
+            default_routing_key: 'cache_invalidation'
         student_skills:
             connection: default
             exchange_options:
                 name: 'student_skills'
                 type: direct
+            default_routing_key: 'student_skills'
         student_groups:
             connection: default
             exchange_options:
                 name: 'student_groups'
                 type: direct
+            default_routing_key: 'student_groups'
         group_skills:
             connection: default
             exchange_options:
                 name: 'group_skills'
                 type: direct
+            default_routing_key: 'group_skills'
     consumers:
+        domain_events:
+            connection: default
+            exchange_options:
+                name: 'domain_events'
+                type: topic
+            queue_options:
+                name: 'domain_events'
+                routing_keys: ['teacher.#', 'student.#', 'group.#']
+            callback: App\Infrastructure\MessageHandler\DomainEventHandler
+            qos_options:
+                prefetch_size: 0
+                prefetch_count: 1
+                global: false
+        domain_events_dlq:
+            connection: default
+            exchange_options:
+                name: 'domain_events_dlx'
+                type: direct
+            queue_options:
+                name: 'domain_events_dlq'
+                routing_key: 'domain_events_dlq'
+            callback: App\Infrastructure\MessageHandler\DomainEventHandler
+            qos_options:
+                prefetch_size: 0
+                prefetch_count: 1
+                global: false
         teacher_skills:
             connection: default
             exchange_options:
@@ -41,7 +79,7 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'teacher_skills'
-                routing_key: 'teacher_skills'
+                routing_keys: ['teacher_skills']
             callback: App\Infrastructure\MessageHandler\TeacherSkillsMessageHandler
             qos_options:
                 prefetch_size: 0
@@ -54,7 +92,7 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'teacher_groups'
-                routing_key: 'teacher_groups'
+                routing_keys: ['teacher_groups']
             callback: App\Infrastructure\MessageHandler\TeacherGroupsMessageHandler
             qos_options:
                 prefetch_size: 0
@@ -67,7 +105,7 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'student_skills'
-                routing_key: 'student_skills'
+                routing_keys: ['student_skills']
             callback: App\Infrastructure\MessageHandler\StudentSkillsMessageHandler
             qos_options:
                 prefetch_size: 0
@@ -80,7 +118,7 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'student_groups'
-                routing_key: 'student_groups'
+                routing_keys: ['student_groups']
             callback: App\Infrastructure\MessageHandler\StudentGroupsMessageHandler
             qos_options:
                 prefetch_size: 0
@@ -93,7 +131,7 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'group_skills'
-                routing_key: 'group_skills'
+                routing_keys: ['group_skills']
             callback: App\Infrastructure\MessageHandler\GroupSkillsMessageHandler
             qos_options:
                 prefetch_size: 0
@@ -106,91 +144,90 @@ old_sound_rabbit_mq:
                 type: direct
             queue_options: 
                 name: 'cache_invalidation'
-                routing_key: 'cache_invalidation'
+                routing_keys: ['cache_invalidation']
             callback: App\Infrastructure\MessageHandler\CacheInvalidationMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 10  # Быстрые операции с кешем
                 global: false
-        # Dead Letter Queues
-        teacher_skills_dead_letter:
+        teacher_skills_dlq:
             connection: default
             exchange_options:
                 name: 'teacher_skills_dlx'
                 type: direct
             queue_options:
                 name: 'teacher_skills_error'
-                routing_key: 'teacher_skills_error'
+                routing_keys: ['teacher_skills_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\TeacherSkillsDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
                 global: false
 
-        teacher_groups_dead_letter:
+        teacher_groups_dlq:
             connection: default
             exchange_options:
                 name: 'teacher_groups_dlx'
                 type: direct
             queue_options:
                 name: 'teacher_groups_error'
-                routing_key: 'teacher_groups_error'
+                routing_keys: ['teacher_groups_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\TeacherGroupsDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
                 global: false
 
-        student_skills_dead_letter:
+        student_skills_dlq:
             connection: default
             exchange_options:
                 name: 'student_skills_dlx'
                 type: direct
             queue_options:
                 name: 'student_skills_error'
-                routing_key: 'student_skills_error'
+                routing_keys: ['student_skills_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\StudentSkillsDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
                 global: false
 
-        student_groups_dead_letter:
+        student_groups_dlq:
             connection: default
             exchange_options:
                 name: 'student_groups_dlx'
                 type: direct
             queue_options:
                 name: 'student_groups_error'
-                routing_key: 'student_groups_error'
+                routing_keys: ['student_groups_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\StudentGroupsDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
                 global: false
 
-        group_skills_dead_letter:
+        group_skills_dlq:
             connection: default
             exchange_options:
                 name: 'group_skills_dlx'
                 type: direct
             queue_options:
                 name: 'group_skills_error'
-                routing_key: 'group_skills_error'
+                routing_keys: ['group_skills_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\GroupSkillsDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
                 global: false
 
-        cache_invalidation_dead_letter:
+        cache_invalidation_dlq:
             connection: default
             exchange_options:
                 name: 'cache_invalidation_dlx'
                 type: direct
             queue_options:
                 name: 'cache_invalidation_error'
-                routing_key: 'cache_invalidation_error'
+                routing_keys: ['cache_invalidation_error']
             callback: App\Infrastructure\MessageHandler\DeadLetter\CacheInvalidationDeadLetterMessageHandler
             qos_options:
                 prefetch_size: 0

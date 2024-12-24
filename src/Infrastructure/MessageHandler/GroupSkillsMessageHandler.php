@@ -9,22 +9,30 @@ use App\Domain\Service\SkillServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Domain\Dto\Message\GroupSkillsMessage;
+use Doctrine\ORM\EntityManagerInterface;
 use OldSound\RabbitMqBundle\RabbitMq\ConsumerInterface;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use PhpAmqpLib\Message\AMQPMessage;
-use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
-readonly class GroupSkillsMessageHandler implements ConsumerInterface
+class GroupSkillsMessageHandler extends AbstractMessageHandler implements ConsumerInterface
 {
     public function __construct(
-        private GroupServiceInterface $group_service,
-        private SkillServiceInterface $skill_service,
-        private CacheItemPoolInterface $group_pool,
-        private LoggerInterface $logger,
+        EntityManagerInterface $entity_manager,
+        LoggerInterface $logger,
+        private readonly GroupServiceInterface $group_service,
+        private readonly SkillServiceInterface $skill_service,
+        private readonly ProducerInterface $domain_events_producer,
     ) {
+        parent::__construct($entity_manager, $logger);
     }
 
     public function execute(AMQPMessage $msg): int
+    {
+        return $this->processMessage($msg);
+    }
+
+    protected function processMessage(AMQPMessage $msg): int
     {
         try {
             $message = GroupSkillsMessage::fromArray(json_decode($msg->getBody(), true));
@@ -42,34 +50,59 @@ readonly class GroupSkillsMessageHandler implements ConsumerInterface
                 return self::MSG_REJECT;
             }
 
-            // Удаляем старые требуемые навыки
-            foreach ($group->getRequiredSkills() as $skill) {
-                $this->group_service->removeRequiredSkill($group, $skill->getSkill());
-            }
+            // Удаляем старые навыки
+            foreach ($group->getSkills() as $skill) {
+                $this->group_service->removeSkill($group, $skill->getSkill());
 
-            // Добавляем новые требуемые навыки
-            foreach ($message->getSkills() as $skill_data) {
-                $skill = $this->skill_service->findById(new EntityId($skill_data['id']));
-                if ($skill === null) {
-                    $this->logger->warning('Skill not found', [
-                        'skill_id' => $skill_data['id']
-                    ]);
-                    continue;
-                }
-
-                $this->group_service->addRequiredSkill(
-                    $group,
-                    $skill,
-                    ProficiencyLevel::fromInt($skill_data['level'])
+                // Публикуем событие об удалении навыка
+                $this->domain_events_producer->publish(
+                    json_encode([
+                        'event' => 'group.skill_removed',
+                        'payload' => [
+                            'group_id' => $group->getId(),
+                            'skill_id' => $skill->getSkill()->getId()
+                        ]
+                    ]),
+                    'group.skill_removed'
                 );
             }
 
-            // Инвалидируем кэш
-            $this->group_pool->deleteItem('group_' . $message->getGroupId());
+            // Добавляем новые навыки
+            foreach ($message->getSkills() as $skill_data) {
+                $skill = $this->skill_service->findById(new EntityId($skill_data['skill_id']));
+                if ($skill !== null) {
+                    $level = new ProficiencyLevel($skill_data['level']);
+                    $this->group_service->addSkill($group, $skill, $level);
+
+                    // Публикуем событие о добавлении навыка
+                    $this->domain_events_producer->publish(
+                        json_encode([
+                            'event' => 'group.skill_added',
+                            'payload' => [
+                                'group_id' => $group->getId(),
+                                'skill_id' => $skill->getId(),
+                                'level' => $level->getValue()
+                            ]
+                        ]),
+                        'group.skill_added'
+                    );
+                } else {
+                    $this->logger->warning('Skill not found', [
+                        'skill_id' => $skill_data['skill_id']
+                    ]);
+                }
+            }
+
+            $this->logger->info('Group skills updated successfully', [
+                'group_id' => $message->getGroupId()
+            ]);
 
             return self::MSG_ACK;
-        } catch (\Throwable $e) {
-            $this->logger->error('Error processing group skills message: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            $this->logger->error('Error processing group skills message', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return self::MSG_REJECT;
         }
     }
