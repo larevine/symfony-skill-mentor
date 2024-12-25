@@ -28,10 +28,11 @@ class Teacher extends User
         string $first_name,
         string $last_name,
         string $email,
-        array $roles = [],
+        string $password,
+        array $roles = ['ROLE_TEACHER'],
         int $max_groups = 2
     ) {
-        parent::__construct($first_name, $last_name, $email, $roles);
+        parent::__construct($first_name, $last_name, $email, $password, $roles);
         $this->max_groups = $max_groups;
         $this->teaching_groups = new ArrayCollection();
         $this->skills = new ArrayCollection();
@@ -49,7 +50,9 @@ class Teacher extends User
     {
         if (!$this->teaching_groups->contains($group)) {
             $this->teaching_groups->add($group);
-            $group->setTeacher($this);
+            if ($group->getTeacher() !== $this) {
+                $group->setTeacher($this);
+            }
         }
     }
 
@@ -57,7 +60,7 @@ class Teacher extends User
     {
         if ($group !== null && $this->teaching_groups->removeElement($group)) {
             if ($group->getTeacher() === $this) {
-                $group->setTeacher($this); // Keep the current teacher since it can't be null
+                $group->setTeacher(null);
             }
         }
     }
@@ -95,30 +98,5 @@ class Teacher extends User
     public function setMaxGroups(int $max_groups): void
     {
         $this->max_groups = $max_groups;
-    }
-
-    public function canTeachMoreGroups(): bool
-    {
-        return $this->teaching_groups->count() < $this->max_groups;
-    }
-
-    public function hasRequiredSkills(Group $group): bool
-    {
-        foreach ($group->getRequiredSkills() as $required_skill) {
-            $has_skill = false;
-            foreach ($this->skills as $teacher_skill) {
-                if (
-                    $teacher_skill->getSkill() === $required_skill->getSkill()
-                    && $teacher_skill->getLevel()->getValue() >= $required_skill->getLevel()->getValue()
-                ) {
-                    $has_skill = true;
-                    break;
-                }
-            }
-            if (!$has_skill) {
-                return false;
-            }
-        }
-        return true;
     }
 }

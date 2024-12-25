@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Interface\DTO;
+namespace App\Interface\DTO\Filter;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-class StudentFilterRequest
+abstract class AbstractUserFilterRequest
 {
     #[Assert\Type('array')]
     #[Assert\All([
@@ -15,7 +15,7 @@ class StudentFilterRequest
             new Assert\Positive(),
         ],
     ])]
-    public ?array $skill_ids;
+    private ?array $skill_ids = null;
 
     #[Assert\Type('array')]
     #[Assert\All([
@@ -24,32 +24,43 @@ class StudentFilterRequest
             new Assert\Positive(),
         ],
     ])]
-    public ?array $group_ids;
+    private ?array $group_ids = null;
 
     #[Assert\Type('string')]
     #[Assert\Length(min: 2, max: 255)]
-    public ?string $search;
+    private ?string $search = null;
+
+    #[Assert\Type('string')]
+    private ?string $sort_by = null;
+
+    #[Assert\Type('string')]
+    #[Assert\Choice(['ASC', 'DESC'])]
+    private ?string $sort_order = null;
 
     #[Assert\Type('integer')]
     #[Assert\Range(min: 1)]
-    public int $page;
+    private int $page = 1;
 
     #[Assert\Type('integer')]
     #[Assert\Range(min: 1, max: 100)]
-    public int $per_page;
+    private int $per_page = 20;
 
     public function __construct(
         ?array $skill_ids = null,
         ?array $group_ids = null,
         ?string $search = null,
+        ?string $sort_by = null,
+        ?string $sort_order = null,
         int $page = 1,
         int $per_page = 20,
     ) {
-        $this->skill_ids = $skill_ids;
-        $this->group_ids = $group_ids;
-        $this->search = $search;
-        $this->page = $page;
-        $this->per_page = $per_page;
+        $this->setSkillIds($skill_ids);
+        $this->setGroupIds($group_ids);
+        $this->setSearch($search);
+        $this->setSortBy($sort_by);
+        $this->setSortOrder($sort_order);
+        $this->setPage($page);
+        $this->setPerPage($per_page);
     }
 
     public function getSkillIds(): ?array
@@ -82,6 +93,26 @@ class StudentFilterRequest
         $this->search = $search;
     }
 
+    public function getSortBy(): ?string
+    {
+        return $this->sort_by;
+    }
+
+    public function setSortBy(?string $sort_by): void
+    {
+        $this->sort_by = $sort_by;
+    }
+
+    public function getSortOrder(): ?string
+    {
+        return $this->sort_order;
+    }
+
+    public function setSortOrder(?string $sort_order): void
+    {
+        $this->sort_order = $sort_order;
+    }
+
     public function getPage(): int
     {
         return $this->page;
@@ -102,28 +133,13 @@ class StudentFilterRequest
         $this->per_page = $per_page;
     }
 
-    public function getLimit(): int
-    {
-        return $this->per_page;
-    }
-
     public function getOffset(): int
     {
         return ($this->page - 1) * $this->per_page;
     }
 
-    public function getMinSkillLevel(): ?int
+    public function getLimit(): int
     {
-        return null; // Implement if needed
-    }
-
-    public function getMaxSkillLevel(): ?int
-    {
-        return null; // Implement if needed
-    }
-
-    public function getSearchTerm(): ?string
-    {
-        return $this->search;
+        return $this->per_page;
     }
 }

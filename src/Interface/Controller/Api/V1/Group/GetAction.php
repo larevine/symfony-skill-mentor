@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/groups/{id}', methods: ['GET'])]
+#[Route('/v1/groups/{group_id}', methods: ['GET'])]
 final class GetAction extends ApiController
 {
     public function __construct(
@@ -26,24 +26,24 @@ final class GetAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $group_id): JsonResponse
     {
         try {
-            $cache_key = 'group_' . $id;
+            $cache_key = 'group_' . $group_id;
             $cache_item = $this->group_pool->getItem($cache_key);
 
             if ($cache_item->isHit()) {
                 return $this->json($cache_item->get());
             }
 
-            $group_id = new EntityId($id);
+            $group_id = new EntityId($group_id);
             $group = $this->group_service->findById($group_id);
             $this->validateEntityExists($group, 'Group not found');
 
             $response = GroupResponse::fromEntity($group);
 
             $cache_item->set($response);
-            $cache_item->tag(['groups', 'group_' . $id]);
+            $cache_item->tag(['groups', 'group_' . $group_id->getValue()]);
             $cache_item->expiresAfter($this->cache_ttl);
             $this->group_pool->save($cache_item);
 

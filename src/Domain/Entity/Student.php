@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
-use App\Domain\ValueObject\Email;
-use App\Domain\ValueObject\PersonName;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -17,23 +15,26 @@ use Doctrine\ORM\Mapping as ORM;
 #[ApiResource]
 class Student extends User
 {
-    #[ORM\ManyToMany(targetEntity: Group::class, inversedBy: 'students')]
+    #[ORM\ManyToMany(targetEntity: Group::class, inversedBy: 'students', cascade: ['persist'])]
     #[ORM\JoinTable(name: 'student_groups')]
     private Collection $groups;
 
-    #[ORM\OneToMany(targetEntity: SkillProficiency::class, mappedBy: 'student', cascade: ['persist', 'remove'])]
-    private Collection $skills;
+    /**
+     * @var Collection<int, SkillProficiency>
+     */
+    #[ORM\OneToMany(targetEntity: SkillProficiency::class, mappedBy: 'student', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $skill_proficiencies;
 
     public function __construct(
         string $first_name,
         string $last_name,
         string $email,
-        array $roles = ['ROLE_STUDENT'],
-        string $password = '',
+        string $password,
+        array $roles = ['ROLE_STUDENT']
     ) {
-        parent::__construct($first_name, $last_name, $email, $roles, $password);
+        parent::__construct($first_name, $last_name, $email, $password, $roles);
         $this->groups = new ArrayCollection();
-        $this->skills = new ArrayCollection();
+        $this->skill_proficiencies = new ArrayCollection();
     }
 
     /**
@@ -64,31 +65,21 @@ class Student extends User
      */
     public function getSkills(): Collection
     {
-        return $this->skills;
+        return $this->skill_proficiencies;
     }
 
     public function addSkill(SkillProficiency $skill): void
     {
-        if (!$this->skills->contains($skill)) {
-            $this->skills->add($skill);
+        if (!$this->skill_proficiencies->contains($skill)) {
+            $this->skill_proficiencies->add($skill);
             $skill->setStudent($this);
         }
     }
 
     public function removeSkill(SkillProficiency $skill): void
     {
-        if ($this->skills->removeElement($skill)) {
+        if ($this->skill_proficiencies->removeElement($skill)) {
             $skill->setStudent(null);
         }
-    }
-
-    public function updateName(PersonName $name): void
-    {
-        parent::updateName($name);
-    }
-
-    public function updateEmail(Email $email): void
-    {
-        parent::updateEmail($email);
     }
 }

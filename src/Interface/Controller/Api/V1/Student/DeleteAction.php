@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/students/{id}', methods: ['DELETE'])]
+#[Route('/v1/students/{student_id}', methods: ['DELETE'])]
 final class DeleteAction extends ApiController
 {
     public function __construct(
@@ -23,10 +23,10 @@ final class DeleteAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $student_id): JsonResponse
     {
         try {
-            $student_id = new EntityId($id);
+            $student_id = new EntityId($student_id);
 
             $student = $this->student_service->findById($student_id);
             $this->validateEntityExists($student, 'Student not found');

@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/students/{id}/skills/{skill_id}', methods: ['DELETE'])]
+#[Route('/v1/students/{student_id}/skills/{skill_id}', methods: ['DELETE'])]
 final class RemoveSkillAction extends ApiController
 {
     public function __construct(
@@ -26,10 +26,10 @@ final class RemoveSkillAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id, int $skill_id): JsonResponse
+    public function __invoke(int $student_id, int $skill_id): JsonResponse
     {
         try {
-            $student_id = new EntityId($id);
+            $student_id = new EntityId($student_id);
             $skill_id = new EntityId($skill_id);
 
             $student = $this->student_service->findById($student_id);

@@ -112,6 +112,9 @@
             "config/packages/lexik_jwt_authentication.yaml"
         ]
     },
+    "liip/test-fixtures-bundle": {
+        "version": "3.2.1"
+    },
     "nelmio/api-doc-bundle": {
         "version": "4.33",
         "recipe": {
@@ -293,7 +296,7 @@
         ]
     },
     "symfony/web-profiler-bundle": {
-        "version": "6.4",
+        "version": "7.1",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "main",

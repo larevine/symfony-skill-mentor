@@ -31,6 +31,7 @@ final class CreateAction extends AbstractController
                 first_name: $data['first_name'],
                 last_name: $data['last_name'],
                 email: $data['email'],
+                password: $data['password'],
                 max_groups: $data['max_groups'],
             );
 

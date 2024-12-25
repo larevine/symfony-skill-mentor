@@ -20,7 +20,7 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/students/{id}', methods: ['PUT'])]
+#[Route('/v1/students/{student_id}', methods: ['PUT'])]
 final class UpdateAction extends ApiController
 {
     public function __construct(
@@ -29,11 +29,11 @@ final class UpdateAction extends ApiController
     }
 
     public function __invoke(
-        int $id,
+        int $student_id,
         #[MapRequestPayload] UpdateStudentRequest $request,
     ): JsonResponse {
         try {
-            $student_id = new EntityId($id);
+            $student_id = new EntityId($student_id);
 
             $student = $this->student_service->findById($student_id);
             $this->validateEntityExists($student, 'Student not found');

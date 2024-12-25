@@ -16,6 +16,9 @@ readonly class UpdateGroupRequest
         public ?int $teacher_id = null,
         #[Assert\Type('integer')]
         #[Assert\Range(min: 1, max: 100)]
+        public ?int $min_students = null,
+        #[Assert\Type('integer')]
+        #[Assert\Range(min: 1, max: 100)]
         public ?int $max_students = null,
     ) {
     }

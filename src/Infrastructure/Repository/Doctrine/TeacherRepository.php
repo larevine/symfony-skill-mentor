@@ -6,7 +6,8 @@ namespace App\Infrastructure\Repository\Doctrine;
 
 use App\Domain\Entity\Teacher;
 use App\Domain\Repository\TeacherRepositoryInterface;
-use App\Interface\DTO\TeacherFilterRequest;
+use App\Interface\DTO\Filter\TeacherFilterRequest;
+use Doctrine\ORM\QueryBuilder;
 
 class TeacherRepository extends AbstractBaseRepository implements TeacherRepositoryInterface
 {
@@ -15,64 +16,21 @@ class TeacherRepository extends AbstractBaseRepository implements TeacherReposit
         return $this->find($id);
     }
 
-    public function findByFilter(TeacherFilterRequest $filter): array
+    public function findOneByEmail(string $email): ?Teacher
     {
-        $qb = $this->createQueryBuilder('t');
-
-        if ($filter->search !== null) {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    $qb->expr()->like('t.first_name', ':search'),
-                    $qb->expr()->like('t.last_name', ':search'),
-                    $qb->expr()->like('t.email', ':search')
-                )
-            )
-            ->setParameter('search', '%' . $filter->search . '%');
-        }
-
-        if ($filter->skill_ids) {
-            $qb->join('t.skills', 'sp')
-                ->join('sp.skill', 's')
-                ->andWhere('s.id IN (:skill_sds)')
-                ->setParameter('skill_sds', $filter->skill_ids);
-        }
-
-        if ($filter->sort_by) {
-            foreach ($filter->sort_by as $field) {
-                $qb->addOrderBy("t.$field", $filter->sort_order);
-            }
-        }
-
-        $qb->setFirstResult(($filter->page - 1) * $filter->per_page)
-            ->setMaxResults($filter->per_page);
-
-        return $qb->getQuery()->getResult();
+        return $this->findOneBy(['email' => $email]);
     }
 
-    public function countByFilter(TeacherFilterRequest $filter): int
+    public function findByFilter(TeacherFilterRequest $filter): array
     {
-        $qb = $this->createQueryBuilder('t')
-            ->select('COUNT(t.id)');
+        $qb = $this->createFilterQueryBuilder($filter);
 
-        if ($filter->search) {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    $qb->expr()->like('t.first_name', ':search'),
-                    $qb->expr()->like('t.last_name', ':search'),
-                    $qb->expr()->like('t.email', ':search')
-                )
-            )
-            ->setParameter('search', '%' . $filter->search . '%');
+        if ($filter->getLimit() > 0) {
+            $qb->setMaxResults($filter->getLimit());
+            $qb->setFirstResult($filter->getOffset());
         }
 
-        if ($filter->skill_ids) {
-            $qb->join('t.skills', 'sp')
-                ->join('sp.skill', 's')
-                ->andWhere('s.id IN (:skill_ids)')
-                ->setParameter('skill_ids', $filter->skill_ids);
-        }
-
-        return (int)$qb->getQuery()->getSingleScalarResult();
+        return $qb->getQuery()->getResult();
     }
 
     /**
@@ -81,5 +39,57 @@ class TeacherRepository extends AbstractBaseRepository implements TeacherReposit
     public function findAll(): array
     {
         return parent::findAll();
+    }
+
+    private function createFilterQueryBuilder(TeacherFilterRequest $filter): QueryBuilder
+    {
+        $qb = $this->createQueryBuilder('t')
+            ->select('t');
+
+        if ($filter->getSkillIds()) {
+            $qb->leftJoin('t.skill_proficiencies', 'sp')
+                ->leftJoin('sp.skill', 'skill');
+        }
+
+        if ($filter->getGroupIds()) {
+            $qb->leftJoin('t.groups', 'g');
+        }
+
+        $this->applyFilterConditions($qb, $filter);
+
+        // Apply sorting
+        if ($filter->getSortBy()) {
+            $sort_field = match ($filter->getSortBy()) {
+                'first_name', 'last_name', 'email' => 't.' . $filter->getSortBy(),
+                default => 't.id'
+            };
+            $qb->addOrderBy($sort_field, $filter->getSortOrder() ?? 'ASC');
+        }
+
+        return $qb;
+    }
+
+    private function applyFilterConditions(QueryBuilder $qb, TeacherFilterRequest $filter): void
+    {
+        if ($filter->getSkillIds()) {
+            $qb->andWhere('skill.id IN (:skill_ids)')
+                ->setParameter('skill_ids', $filter->getSkillIds());
+        }
+
+        if ($filter->getGroupIds()) {
+            $qb->andWhere('g.id IN (:group_ids)')
+                ->setParameter('group_ids', $filter->getGroupIds());
+        }
+
+        if ($filter->getSearch()) {
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->like('t.first_name', ':search'),
+                    $qb->expr()->like('t.last_name', ':search'),
+                    $qb->expr()->like('t.email', ':search')
+                )
+            )
+                ->setParameter('search', '%' . $filter->getSearch() . '%');
+        }
     }
 }

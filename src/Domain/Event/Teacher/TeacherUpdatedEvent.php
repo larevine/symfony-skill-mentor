@@ -8,6 +8,8 @@ use App\Domain\Event\DomainEventInterface;
 
 class TeacherUpdatedEvent implements DomainEventInterface
 {
+    public const NAME = 'teacher.updated';
+
     public function __construct(
         private readonly int $teacher_id,
         private readonly array $teacher_info
@@ -16,7 +18,7 @@ class TeacherUpdatedEvent implements DomainEventInterface
 
     public function getEventName(): string
     {
-        return 'teacher.updated';
+        return self::NAME;
     }
 
     public function getTeacherId(): int
@@ -29,7 +31,7 @@ class TeacherUpdatedEvent implements DomainEventInterface
         return $this->teacher_info;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

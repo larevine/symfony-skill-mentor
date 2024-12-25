@@ -15,18 +15,16 @@ use App\Domain\Event\Group\GroupSkillAddedEvent;
 use App\Domain\Event\Group\GroupSkillRemovedEvent;
 use App\Domain\Event\Group\GroupStudentAddedEvent;
 use App\Domain\Event\Group\GroupStudentRemovedEvent;
-use App\Domain\Event\Group\GroupTeacherAssignedEvent;
 use App\Domain\Event\Group\GroupUpdatedEvent;
 use App\Domain\Exception\GroupException;
+use App\Domain\Exception\TeacherException;
 use App\Domain\Repository\GroupRepositoryInterface;
 use App\Domain\Repository\SkillRepositoryInterface;
-use App\Domain\Repository\StudentRepositoryInterface;
-use App\Domain\Repository\TeacherRepositoryInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\GroupCapacity;
 use App\Domain\ValueObject\GroupName;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\GroupFilterRequest;
+use App\Interface\DTO\Filter\GroupFilterRequest;
 use DomainException;
 use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
@@ -34,8 +32,6 @@ readonly class GroupService implements GroupServiceInterface
 {
     public function __construct(
         private GroupRepositoryInterface $group_repository,
-        private StudentRepositoryInterface $student_repository,
-        private TeacherRepositoryInterface $teacher_repository,
         private SkillRepositoryInterface $skill_repository,
         private ProducerInterface $domain_events_producer,
     ) {
@@ -49,16 +45,6 @@ readonly class GroupService implements GroupServiceInterface
     public function findSkillById(EntityId $id): ?Skill
     {
         return $this->skill_repository->findById($id->getValue());
-    }
-
-    public function findTeacherById(EntityId $id): ?Teacher
-    {
-        return $this->teacher_repository->findById($id->getValue());
-    }
-
-    public function findStudentById(EntityId $id): ?Student
-    {
-        return $this->student_repository->findById($id->getValue());
     }
 
     public function hasAvailableSlots(Group $group): bool
@@ -96,12 +82,13 @@ readonly class GroupService implements GroupServiceInterface
      */
     public function findByFilter(GroupFilterRequest $filter): array
     {
-        $criteria = $this->buildFilterCriteria($filter);
-        $order_by = $this->buildSortOrder($filter);
-        $limit = $filter->per_page;
-        $offset = ($filter->page - 1) * $filter->per_page;
+        $criteria = [];
 
-        return $this->group_repository->findBy($criteria, $order_by, $limit, $offset);
+        if ($filter->search !== null) {
+            $criteria['name'] = $filter->search;
+        }
+
+        return $this->group_repository->findBy($criteria);
     }
 
     public function countByFilter(GroupFilterRequest $filter): int
@@ -136,23 +123,6 @@ readonly class GroupService implements GroupServiceInterface
         return $criteria;
     }
 
-    /**
-     * @return array<string, string>|null
-     */
-    private function buildSortOrder(GroupFilterRequest $filter): ?array
-    {
-        if ($filter->sort_by === null) {
-            return null;
-        }
-
-        $order_by = [];
-        foreach ($filter->sort_by as $field) {
-            $order_by[$field] = $filter->sort_order;
-        }
-
-        return $order_by;
-    }
-
     public function create(
         string $name,
         array $students,
@@ -171,7 +141,12 @@ readonly class GroupService implements GroupServiceInterface
                 $capacity->getMaxStudents()
             );
 
-            $this->group_repository->save($group);
+            $this->save($group);
+
+            // Ensure the group has an ID before creating events
+            if ($group->getId() === null) {
+                throw new DomainException('Failed to save group - no ID generated');
+            }
 
             $group_aggregate = new GroupAggregate(
                 new EntityId($group->getId()),
@@ -186,7 +161,7 @@ readonly class GroupService implements GroupServiceInterface
                     $student->getId()
                 );
                 $this->domain_events_producer->publish(
-                    json_encode($event->toArray()),
+                    json_encode($event),
                     $event->getEventName()
                 );
             }
@@ -202,7 +177,7 @@ readonly class GroupService implements GroupServiceInterface
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
 
@@ -210,9 +185,9 @@ readonly class GroupService implements GroupServiceInterface
         });
     }
 
-    public function update(Group $group, ?string $name = null, ?int $max_students = null): void
+    public function update(Group $group, ?string $name = null, ?int $min_students = null, ?int $max_students = null): void
     {
-        $this->wrapDomainException(function () use ($group, $name, $max_students) {
+        $this->wrapDomainException(function () use ($group, $name, $min_students, $max_students) {
             $group_aggregate = new GroupAggregate(
                 new EntityId($group->getId()),
                 $this->group_repository
@@ -224,7 +199,7 @@ readonly class GroupService implements GroupServiceInterface
             }
 
             if ($max_students !== null) {
-                $capacity = new GroupCapacity($group->getMinStudents(), $max_students);
+                $capacity = new GroupCapacity($min_students, $max_students);
                 $group_aggregate->updateCapacity($capacity->getMinStudents(), $capacity->getMaxStudents());
             }
 
@@ -234,11 +209,11 @@ readonly class GroupService implements GroupServiceInterface
                     'name' => $name ?? $group->getName(),
                     'min_students' => $group->getMinStudents(),
                     'max_students' => $max_students ?? $group->getMaxStudents(),
-                    'students' => array_map(fn (Student $student) => $student->getId(), $group->getStudents()),
+                    'students' => array_map(fn (Student $student) => $student->getId(), $group->getStudents()->toArray()),
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         });
@@ -251,7 +226,7 @@ readonly class GroupService implements GroupServiceInterface
 
             $event = new GroupDeletedEvent($group->getId());
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         });
@@ -259,22 +234,12 @@ readonly class GroupService implements GroupServiceInterface
 
     public function addStudent(Group $group, Student $student): void
     {
-        $this->wrapDomainException(function () use ($group, $student) {
-            $group_aggregate = new GroupAggregate(
-                new EntityId($group->getId()),
-                $this->group_repository
-            );
-            $group_aggregate->addStudent($student);
+        if ($this->group_repository->isGroupFull($group)) {
+            throw new GroupException('Group has reached maximum capacity');
+        }
 
-            $event = new GroupStudentAddedEvent(
-                $group->getId(),
-                $student->getId()
-            );
-            $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
-                $event->getEventName()
-            );
-        });
+        $group->addStudent($student);
+        $this->group_repository->save($group);
     }
 
     public function removeStudent(Group $group, Student $student): void
@@ -291,7 +256,7 @@ readonly class GroupService implements GroupServiceInterface
                 $student->getId()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         });
@@ -299,22 +264,24 @@ readonly class GroupService implements GroupServiceInterface
 
     public function assignTeacher(Group $group, Teacher $teacher): void
     {
-        $this->wrapDomainException(function () use ($group, $teacher) {
+        try {
+            // Check if teacher has reached maximum groups
+            if ($teacher->getMaxGroups() !== null && count($teacher->getTeachingGroups()) >= $teacher->getMaxGroups()) {
+                throw new TeacherException('Teacher has reached maximum number of groups');
+            }
+
             $group_aggregate = new GroupAggregate(
                 new EntityId($group->getId()),
                 $this->group_repository
             );
             $group_aggregate->assignTeacher($teacher);
 
-            $event = new GroupTeacherAssignedEvent(
-                $group->getId(),
-                $teacher->getId()
-            );
-            $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
-                $event->getEventName()
-            );
-        });
+            $this->group_repository->save($group);
+        } catch (TeacherException $e) {
+            throw $e;
+        } catch (DomainException $e) {
+            throw GroupException::fromDomainException($e);
+        }
     }
 
     public function addSkill(Group $group, Skill $skill, ProficiencyLevel $level): void
@@ -332,7 +299,7 @@ readonly class GroupService implements GroupServiceInterface
                 $level->getLabel()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         });
@@ -352,7 +319,7 @@ readonly class GroupService implements GroupServiceInterface
                 $skill->getId()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         });
@@ -393,6 +360,8 @@ readonly class GroupService implements GroupServiceInterface
     {
         try {
             return $callback();
+        } catch (TeacherException $e) {
+            throw $e;
         } catch (DomainException $e) {
             throw GroupException::fromDomainException($e);
         }

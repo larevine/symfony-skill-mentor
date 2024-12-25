@@ -33,6 +33,7 @@ final class CreateAction extends ApiController
                 $request->first_name,
                 $request->last_name,
                 $request->email,
+                $request->password,
             );
 
             return $this->json(StudentResponse::fromEntity($student), Response::HTTP_CREATED);

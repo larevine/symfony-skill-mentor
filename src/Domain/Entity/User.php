@@ -12,8 +12,8 @@ use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\PersonName;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
@@ -32,46 +32,35 @@ abstract class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::INTEGER)]
-    private ?int $id = null;
+    protected ?int $id = null;
 
     #[ORM\Column(type: Types::STRING, length: 255)]
-    private string $first_name;
+    protected string $first_name;
 
     #[ORM\Column(type: Types::STRING, length: 255)]
-    private string $last_name;
+    protected string $last_name;
 
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
-    private string $email;
+    protected string $email;
 
-    private ?PersonName $name = null;
-    private ?Email $email_vo = null;
-
-    #[ORM\Column]
+    #[ORM\Column(type: Types::JSON)]
     protected array $roles = [];
 
-    #[ORM\Column]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     protected string $password;
 
     public function __construct(
-        string $first_name,
-        string $last_name,
+        string $firstName,
+        string $lastName,
         string $email,
-        array $roles = [],
-        string $password = '',
+        string $password,
+        array $roles = []
     ) {
-        // Сохраняем значения для Doctrine
-        $this->first_name = $first_name;
-        $this->last_name = $last_name;
+        $this->first_name = $firstName;
+        $this->last_name = $lastName;
         $this->email = $email;
         $this->roles = $roles;
         $this->password = $password;
-    }
-
-    #[ORM\PostLoad]
-    public function initializeValueObjects(): void
-    {
-        $this->name = new PersonName($this->first_name, $this->last_name);
-        $this->email_vo = new Email($this->email);
     }
 
     public function getId(): ?int
@@ -89,33 +78,38 @@ abstract class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->last_name;
     }
 
-    public function getFullName(): string
-    {
-        if (!isset($this->name)) {
-            $this->name = new PersonName($this->first_name, $this->last_name);
-        }
-        return $this->name->getFullName();
-    }
-
     public function getEmail(): string
     {
         return $this->email;
     }
 
-    public function getName(): PersonName
+    public function getRoles(): array
     {
-        if (!isset($this->name)) {
-            $this->name = new PersonName($this->first_name, $this->last_name);
-        }
-        return $this->name;
+        return array_unique([...$this->roles, 'ROLE_USER']);
     }
 
-    public function getEmailVO(): Email
+    public function getUserIdentifier(): string
     {
-        if (!isset($this->email_vo)) {
-            $this->email_vo = new Email($this->email);
-        }
-        return $this->email_vo;
+        return $this->email;
+    }
+
+    public function eraseCredentials(): void
+    {
+    }
+
+    public function setPassword(string $password): void
+    {
+        $this->password = $password;
+    }
+
+    public function getPassword(): string
+    {
+        return $this->password;
+    }
+
+    public function setRoles(array $roles): void
+    {
+        $this->roles = $roles;
     }
 
     public function updateName(PersonName $name): void
@@ -126,57 +120,6 @@ abstract class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function updateEmail(Email $email): void
     {
-        $this->email_vo = $email;
         $this->email = $email->getValue();
-    }
-
-    public function setFirstName(string $first_name): void
-    {
-        $this->first_name = $first_name;
-        $this->name = new PersonName($first_name, $this->last_name);
-    }
-
-    public function setLastName(string $last_name): void
-    {
-        $this->last_name = $last_name;
-        $this->name = new PersonName($this->first_name, $last_name);
-    }
-
-    public function setEmail(string $email): void
-    {
-        $this->email = $email;
-        $this->email_vo = new Email($email);
-    }
-
-    public function getUserIdentifier(): string
-    {
-        return $this->email;
-    }
-
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        $roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): void
-    {
-        $this->roles = $roles;
-    }
-
-    public function getPassword(): string
-    {
-        return $this->password;
-    }
-
-    public function setPassword(string $password): void
-    {
-        $this->password = $password;
-    }
-
-    public function eraseCredentials(): void
-    {
     }
 }

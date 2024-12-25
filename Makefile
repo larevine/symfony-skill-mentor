@@ -76,7 +76,7 @@ cs-fix:
 
 # Tests
 test:
-	$(DC) exec -T otus-symfony composer test
+	$(DC) exec -T otus-symfony ./vendor/bin/simple-phpunit --coverage-html var/coverage
 
 test-coverage:
 	$(DC) exec -T otus-symfony composer test-coverage

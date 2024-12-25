@@ -9,7 +9,7 @@ use App\Domain\Entity\Skill;
 use App\Domain\Entity\Student;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\StudentFilterRequest;
+use App\Interface\DTO\Filter\StudentFilterRequest;
 
 interface StudentServiceInterface
 {
@@ -33,12 +33,6 @@ interface StudentServiceInterface
     public function findByFilter(StudentFilterRequest $filter): array;
 
     /**
-     * Counts students matching filter criteria.
-     * @see StudentService::countByFilter()
-     */
-    public function countByFilter(StudentFilterRequest $filter): int;
-
-    /**
      * Creates a new student.
      * @param array<array{skill_id: int, level: ProficiencyLevel}> $initial_skills List of initial skills with their levels
      * @see StudentService::create()
@@ -47,6 +41,7 @@ interface StudentServiceInterface
         string $first_name,
         string $last_name,
         string $email,
+        string $password,
         array $initial_skills = [],
     ): Student;
 

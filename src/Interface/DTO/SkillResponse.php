@@ -6,11 +6,12 @@ namespace App\Interface\DTO;
 
 use App\Domain\Entity\Skill;
 use App\Domain\Entity\SkillProficiency;
+use JsonSerializable;
 
-readonly class SkillResponse
+readonly class SkillResponse implements JsonSerializable
 {
     public function __construct(
-        public int $id,
+        public ?int $id,
         public string $name,
         public ?string $description = null,
         public ?int $level = null,
@@ -20,7 +21,7 @@ readonly class SkillResponse
     public static function fromSkill(Skill $skill): self
     {
         return new self(
-            id: $skill->getId() ?? 0,
+            id: $skill->getId(),
             name: $skill->getName(),
             description: $skill->getDescription(),
         );
@@ -30,7 +31,7 @@ readonly class SkillResponse
     {
         $skill = $skill_proficiency->getSkill();
         return new self(
-            id: $skill->getId() ?? 0,
+            id: $skill->getId(),
             name: $skill->getName(),
             description: $skill->getDescription(),
             level: $skill_proficiency->getLevel()->getValue(),
@@ -40,5 +41,15 @@ readonly class SkillResponse
     public static function fromEntity(Skill $skill): self
     {
         return self::fromSkill($skill);
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'description' => $this->description,
+            'level' => $this->level,
+        ];
     }
 }

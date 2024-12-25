@@ -9,7 +9,7 @@ use App\Domain\Entity\Skill;
 use App\Domain\Entity\Teacher;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\TeacherFilterRequest;
+use App\Interface\DTO\Filter\TeacherFilterRequest;
 
 interface TeacherServiceInterface
 {
@@ -34,12 +34,6 @@ interface TeacherServiceInterface
     public function findByFilter(TeacherFilterRequest $filter): array;
 
     /**
-     * Counts teachers matching filter criteria.
-     * @see TeacherService::countByFilter()
-     */
-    public function countByFilter(TeacherFilterRequest $filter): int;
-
-    /**
      * Creates a new teacher.
      * @param array<string> $roles
      * @see TeacherService::create()
@@ -48,6 +42,7 @@ interface TeacherServiceInterface
         string $first_name,
         string $last_name,
         string $email,
+        string $password,
         array $roles = ['ROLE_TEACHER'],
         int $max_groups = 2,
     ): Teacher;

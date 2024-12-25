@@ -6,9 +6,9 @@ namespace App\Interface\Controller\Api\V1\Group;
 
 use App\Domain\Service\GroupServiceInterface;
 use App\Interface\Controller\Api\V1\ApiController;
-use App\Interface\DTO\GroupFilterRequest;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\DTO\ListResponse;
+use App\Interface\DTO\Filter\GroupFilterRequest;
 use App\Interface\Exception\ApiException;
 use DomainException;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;

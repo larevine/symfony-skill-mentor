@@ -1,0 +1,5 @@
+liip_test_fixtures:
+    keep_database_and_schema: true
+    cache_db:
+        sqlite: false
+    cache_metadata: true

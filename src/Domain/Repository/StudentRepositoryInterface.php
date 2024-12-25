@@ -6,11 +6,18 @@ namespace App\Domain\Repository;
 
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Student;
-use App\Interface\DTO\StudentFilterRequest;
+use App\Interface\DTO\Filter\StudentFilterRequest;
 
 interface StudentRepositoryInterface
 {
     public function findById(int $id): ?Student;
+
+    public function findOneByEmail(string $email): ?Student;
+
+    /**
+     * @return array<Student>
+     */
+    public function findByFilter(StudentFilterRequest $filter): array;
 
     /**
      * @return array<Student>
@@ -32,11 +39,4 @@ interface StudentRepositoryInterface
      * @return array<Student>
      */
     public function findEligibleForGroup(Group $group): array;
-
-    /**
-     * @return array<Student>
-     */
-    public function findByFilter(StudentFilterRequest $filter): array;
-
-    public function countByFilter(StudentFilterRequest $filter): int;
 }

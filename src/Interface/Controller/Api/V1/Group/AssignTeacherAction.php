@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/groups/{id}/teacher/{teacher_id}', methods: ['POST'])]
+#[Route('/v1/groups/{group_id}/teacher/{teacher_id}', methods: ['POST'])]
 final class AssignTeacherAction extends ApiController
 {
     public function __construct(
@@ -26,16 +26,16 @@ final class AssignTeacherAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id, int $teacher_id): JsonResponse
+    public function __invoke(int $group_id, int $teacher_id): JsonResponse
     {
         try {
-            $group_id = new EntityId($id);
-            $teacher_id = new EntityId($teacher_id);
+            $group_entity_id = new EntityId($group_id);
+            $teacher_entity_id = new EntityId($teacher_id);
 
-            $group = $this->group_service->findById($group_id);
+            $group = $this->group_service->findById($group_entity_id);
             $this->validateEntityExists($group, 'Group not found');
 
-            $teacher = $this->teacher_service->findById($teacher_id);
+            $teacher = $this->teacher_service->findById($teacher_entity_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 
             $this->group_service->assignTeacher($group, $teacher);

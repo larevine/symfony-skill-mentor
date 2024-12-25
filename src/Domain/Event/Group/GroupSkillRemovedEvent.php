@@ -29,7 +29,7 @@ class GroupSkillRemovedEvent implements DomainEventInterface
         return $this->skill_id;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

@@ -88,12 +88,6 @@ class GroupAggregate extends AbstractAggregate
     public function assignTeacher(Teacher $teacher): void
     {
         $group = $this->getGroup();
-
-        // Бизнес-правило: у группы может быть только один основной преподаватель
-        if ($group->getTeacher() !== null) {
-            throw new DomainException('Group already has a teacher assigned');
-        }
-
         $group->setTeacher($teacher);
         $this->group_repository->save($group);
     }
