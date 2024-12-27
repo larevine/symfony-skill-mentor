@@ -1,0 +1,32 @@
+services:
+  otus-nginx:
+    ports:
+      - "8777:80"  # Staging port
+
+  otus-postgresql:
+    ports:
+      - '25432:5432'  # Staging PostgreSQL port
+
+  otus-elasticsearch:
+    ports:
+      - "9201:9200"  # Staging Elasticsearch HTTP
+      - "9301:9300"  # Staging Elasticsearch TCP
+
+  otus-kibana:
+    ports:
+      - "5602:5601"  # Staging Kibana port
+
+  otus-graphite:
+    ports:
+      - "8001:80"     # Staging Graphite web interface
+      - "2004:2003"   # Staging Graphite metrics port
+      - "8126:8125/udp"  # Staging StatsD port
+
+  otus-grafana:
+    ports:
+      - "3001:3000"  # Staging Grafana port
+
+  otus-rabbitmq:
+    ports:
+      - "5673:5672"  # Staging RabbitMQ port
+      - "15673:15672"  # Staging RabbitMQ management port

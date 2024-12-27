@@ -1,0 +1,376 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches:
+      - KF/hw7
+  pull_request:
+    branches:
+      - KF/hw7
+env:
+  COMPOSE_PROJECT_NAME: otus
+  NGINX_VERSION: 1.25
+  USER_ID: 1000
+  GROUP_ID: 1000
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+      - name: Create env files
+        run: |
+          cat << EOL > .env
+          APP_ENV=dev
+          APP_SECRET=24e17c47430bd2044a61c131c1cf6990
+          COMPOSE_PROJECT_NAME=otus_test
+
+          # Container Names
+          SUPERVISOR_CONTAINER_NAME=otus-supervisor
+          RABBITMQ_CONTAINER_NAME=otus-rabbitmq
+          POSTGRESQL_CONTAINER_NAME=otus-postgresql
+          KIBANA_CONTAINER_NAME=otus-kibana
+          GRAFANA_CONTAINER_NAME=otus-grafana
+          REDIS_CONTAINER_NAME=otus-redis
+          SYMFONY_CONTAINER_NAME=otus-symfony
+          ELASTICSEARCH_CONTAINER_NAME=otus-elasticsearch
+          GRAPHITE_CONTAINER_NAME=otus-graphite
+          MEMCACHED_CONTAINER_NAME=otus-memcached
+
+          # PostgreSQL
+          POSTGRES_HOST=otus-postgresql
+          POSTGRES_DB=otus
+          POSTGRES_USER=otus
+          POSTGRES_PASSWORD=${{ secrets.TEST_DB_PASSWORD }}
+          DATABASE_URL="postgresql://otus:${{ secrets.TEST_DB_PASSWORD }}@otus-postgresql:5432/otus?serverVersion=15&charset=utf8"
+
+          # RabbitMQ
+          RABBITMQ_HOST=otus-rabbitmq
+          RABBITMQ_PORT=5672
+          RABBITMQ_USER=guest
+          RABBITMQ_PASSWORD=guest
+          RABBITMQ_VHOST=/
+          MESSENGER_AMQP_TRANSPORT_DSN=amqp://guest:guest@otus-rabbitmq:5672/%2f/messages
+          RABBITMQ_URL=amqp://guest:guest@otus-rabbitmq:5672/%2f
+
+          # Redis
+          REDIS_DSN=redis://otus-redis:6379
+          REDIS_PASSWORD=secret
+          REDIS_URL=redis://:secret@otus-redis:6379
+          LOCK_DSN=redis://:secret@otus-redis:6379
+
+          # Elasticsearch
+          ELASTICSEARCH_URL=http://otus-elasticsearch:9200/
+
+          # JWT
+          JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+          JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+          JWT_PASSPHRASE=123456
+          JWT_TTL_SEC=3600
+
+          # Memcached
+          MEMCACHED_HOST=otus-memcached
+          MEMCACHED_PORT=11211
+          MEMCACHED_DSN=memcached://otus-memcached:11211
+          
+          CACHE_TTL=3600
+          EOL
+
+          cat << EOL > .env.test
+          APP_ENV=test
+          APP_SECRET=24e17c47430bd2044a61c131c1cf6990
+          KERNEL_CLASS='App\Kernel'
+          APP_SECRET='$test$'
+          SYMFONY_DEPRECATIONS_HELPER=999999
+          PANTHER_APP_ENV=panther
+          PANTHER_ERROR_SCREENSHOT_DIR=./var/error-screenshots
+          DATABASE_URL="postgresql://otus:${{ secrets.TEST_DB_PASSWORD }}@otus-postgresql:5432/otus_test?serverVersion=15&charset=utf8"
+          EOL
+      - name: Build and start containers
+        run: |
+          docker-compose build --build-arg USER_ID=1000 --build-arg GROUP_ID=1000 --build-arg BUILDKIT_INLINE_CACHE=1
+          docker-compose up -d
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 10
+
+      - name: Create test database
+        run: |
+          docker-compose exec -T otus-postgresql psql -U otus -c "CREATE DATABASE otus_test;"
+
+      - name: Configure git safe directories
+        run: |
+          docker-compose exec -T otus-symfony git config --global --add safe.directory /app
+          docker-compose exec -T otus-symfony git config --global --add safe.directory .
+
+      - name: Prepare vendor directory
+        run: |
+          docker-compose exec -T --user root otus-symfony mkdir -p /app/vendor
+          docker-compose exec -T --user root otus-symfony chown -R otus:otus /app
+          docker-compose exec -T --user root otus-symfony chmod -R 777 /app/vendor
+
+      - name: Generate JWT keys
+        run: |
+          docker-compose exec -T --user root otus-symfony mkdir -p config/jwt
+          docker-compose exec -T --user root otus-symfony openssl genpkey -out config/jwt/private.pem -aes256 -algorithm rsa -pkeyopt rsa_keygen_bits:4096 -pass pass:123456
+          docker-compose exec -T --user root otus-symfony openssl pkey -in config/jwt/private.pem -out config/jwt/public.pem -pubout -passin pass:123456
+          docker-compose exec -T --user root otus-symfony chown -R otus:otus config/jwt
+          docker-compose exec -T --user root otus-symfony chmod 644 config/jwt/public.pem
+          docker-compose exec -T --user root otus-symfony chmod 600 config/jwt/private.pem
+
+      - name: Install dependencies and run tests
+        run: |
+          docker-compose exec -T --user otus otus-symfony composer validate --strict
+          docker-compose exec -T --user otus otus-symfony composer install --prefer-dist --no-progress
+          docker-compose exec -T --user otus otus-symfony php bin/console doctrine:migrations:migrate --no-interaction --env=test
+          docker-compose exec -T --user otus otus-symfony php bin/console doctrine:fixtures:load --no-interaction --env=test
+          docker-compose exec -T --user otus -e APP_ENV=test otus-symfony ./vendor/bin/simple-phpunit
+          docker-compose exec -T --user otus otus-symfony vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Cleanup
+        if: always()
+        run: docker-compose down --rmi all --volumes --remove-orphans
+  deploy-staging:
+    name: Deploy to Staging
+    needs: test
+    if: github.ref == 'refs/heads/KF/hw7' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        env:
+          DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.STAGING_HOST }}
+          DEPLOY_USER: root
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          APP_SECRET: ${{ secrets.STAGING_APP_SECRET }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+
+      # Настройка приватного ключа
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      # Проверка наличия ключа и отладка
+      - name: Debug SSH setup
+        run: |
+          echo "Contents of ~/.ssh/:"
+          ls -la ~/.ssh/
+          echo "Contents of deploy_key:"
+          cat ~/.ssh/deploy_key || echo "Key not found"
+
+      - name: Debug STAGING_HOST
+        run: |
+          echo "DEPLOY_HOST=${{ secrets.STAGING_HOST }}"
+
+      - name: Add host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      # Тестирование подключения через SSH
+      - name: Test SSH connection
+        env:
+          DEPLOY_USER: root
+          DEPLOY_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          ssh -vvv -i ~/.ssh/deploy_key root@${{ secrets.STAGING_HOST }}
+
+      # Деплой через SSH
+      - name: Deploy via SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_HOST }}
+          DEPLOY_USER: root
+          DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          APP_SECRET: ${{ secrets.STAGING_APP_SECRET }}
+        run: |
+          ssh -T -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << EOF
+            set -e
+            trap 'echo "Error on line \$LINENO"; exit 1' ERR
+
+            DEPLOY_BASE_PATH=/opt/apps/otus
+            DEPLOY_PATH=\$DEPLOY_BASE_PATH/staging
+            RELEASE_PATH=\$DEPLOY_PATH/releases/\$(date +%Y%m%d_%H%M%S)
+            CURRENT_PATH=\$DEPLOY_PATH/current
+
+            # Сохраняем текущий релиз для возможного отката
+            PREVIOUS_RELEASE=\$(readlink -f \$CURRENT_PATH || echo '')
+
+            mkdir -p \$RELEASE_PATH
+
+            # Клонируем код
+            git clone --depth 1 -b KF/hw7 https://github.com/FedorVr/otustest.git \$RELEASE_PATH
+            cd \$RELEASE_PATH
+
+            # Создаем основной .env файл
+            cat <<EOL > .env
+            APP_ENV=dev
+            APP_DEBUG=1
+            APP_SECRET="${APP_SECRET}"
+            COMPOSE_PROJECT_NAME=otus_staging
+            POSTGRES_DB=otus
+            POSTGRES_USER=otus
+            POSTGRES_PASSWORD="${DB_PASSWORD}"
+            DATABASE_URL="postgresql://otus:${DB_PASSWORD}@otus-postgresql:5432/otus?serverVersion=15&charset=utf8"
+            EOL
+
+            # Создаем .env.test для тестового окружения
+            cat <<EOL > .env.test
+            APP_ENV=test
+            APP_DEBUG=1
+            KERNEL_CLASS='App\Kernel'
+            APP_SECRET='$test$'
+            SYMFONY_DEPRECATIONS_HELPER=999999
+            PANTHER_APP_ENV=panther
+            PANTHER_ERROR_SCREENSHOT_DIR=./var/error-screenshots
+            DATABASE_URL="postgresql://otus:${DB_PASSWORD}@otus-postgresql:5432/otus_test?serverVersion=15&charset=utf8"
+            EOL
+          
+            # Запускаем контейнеры
+            docker-compose -f docker-compose.staging.yml down
+            docker-compose -f docker-compose.staging.yml pull
+            docker-compose -f docker-compose.staging.yml build --no-cache
+            docker-compose -f docker-compose.staging.yml up -d
+
+            # Ждем готовности сервисов и проверяем их
+            until docker-compose -f docker-compose.staging.yml exec -T otus-postgresql pg_isready; do sleep 1; done
+            docker-compose -f docker-compose.staging.yml exec -T otus-symfony composer install --no-dev --optimize-autoloader
+            docker-compose -f docker-compose.staging.yml exec -T otus-symfony php bin/console doctrine:migrations:migrate --no-interaction
+
+            # Проверка работоспособности через API endpoint
+            if ! curl -f http://localhost:8080/api/v1/teachers; then
+              echo "API health check failed"
+              [ -n "\$PREVIOUS_RELEASE" ] && ln -sfn \$PREVIOUS_RELEASE \$CURRENT_PATH
+              exit 1
+            fi
+
+            ln -sfn \$RELEASE_PATH \$CURRENT_PATH
+            cd \$DEPLOY_PATH/releases && ls -t | tail -n +6 | xargs -r rm -rf
+          EOF
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/KF/hw7' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_USER }}
+          DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+          APP_SECRET: ${{ secrets.PRODUCTION_APP_SECRET }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+
+      # Настройка приватного ключа
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      # Проверка наличия ключа и отладка
+      - name: Debug SSH setup
+        run: |
+          echo "Contents of ~/.ssh/:"
+          ls -la ~/.ssh/
+          echo "Contents of deploy_key:"
+          cat ~/.ssh/deploy_key || echo "Key not found"
+
+      - name: Debug STAGING_HOST
+        run: |
+          echo "DEPLOY_HOST=${{ secrets.PRODUCTION_HOST }}"
+
+      - name: Add host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      # Тестирование подключения через SSH
+      - name: Test SSH connection
+        env:
+          DEPLOY_USER: root
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          ssh -vvv -i ~/.ssh/deploy_key root@${{ secrets.PRODUCTION_HOST }}
+
+      # Деплой через SSH
+      - name: Deploy via SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_HOST }}
+          DEPLOY_USER: root
+          DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+          APP_SECRET: ${{ secrets.PRODUCTION_APP_SECRET }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << EOF
+            set -e
+            trap 'echo "Error on line \$LINENO"; exit 1' ERR
+
+            DEPLOY_BASE_PATH=/opt/apps/otus
+            DEPLOY_PATH=\$DEPLOY_BASE_PATH/production
+            RELEASE_PATH=\$DEPLOY_PATH/releases/\$(date +%Y%m%d_%H%M%S)
+            CURRENT_PATH=\$DEPLOY_PATH/current
+
+            # Сохраняем текущий релиз для возможного отката
+            PREVIOUS_RELEASE=\$(readlink -f \$CURRENT_PATH || echo '')
+
+            mkdir -p \$RELEASE_PATH
+
+            # Клонируем код
+            git clone --depth 1 -b KF/hw7 https://github.com/FedorVr/otustest.git \$RELEASE_PATH
+            cd \$RELEASE_PATH
+
+            # Создаем .env файл для production
+            cat <<EOL > .env
+            APP_ENV=prod
+            APP_DEBUG=0
+            APP_SECRET="${APP_SECRET}"
+            COMPOSE_PROJECT_NAME=otus_production
+            POSTGRES_DB=otus
+            POSTGRES_USER=otus
+            POSTGRES_PASSWORD=${DB_PASSWORD}
+            DATABASE_URL="postgresql://otus:${DB_PASSWORD}@otus-postgresql:5432/otus?serverVersion=15&charset=utf8"
+            EOL
+
+            # Запускаем контейнеры
+            docker-compose -f docker-compose.production.yml down
+            docker-compose -f docker-compose.production.yml pull
+            docker-compose -f docker-compose.production.yml build --no-cache
+            docker-compose -f docker-compose.production.yml up -d
+
+            # Ждем готовности сервисов
+            until docker-compose -f docker-compose.production.yml exec -T otus-postgresql pg_isready; do sleep 1; done
+            docker-compose -f docker-compose.production.yml exec -T otus-symfony composer install --no-dev --optimize-autoloader
+            docker-compose -f docker-compose.production.yml exec -T otus-symfony php bin/console doctrine:migrations:migrate --no-interaction
+            docker-compose -f docker-compose.production.yml exec -T otus-symfony php bin/console cache:clear --env=prod
+            docker-compose -f docker-compose.production.yml exec -T otus-symfony php bin/console cache:warmup --env=prod
+
+            # Проверка работоспособности через API endpoint
+            if ! curl -f http://localhost/api/v1/teachers; then
+              echo "API health check failed"
+              [ -n "\$PREVIOUS_RELEASE" ] && ln -sfn \$PREVIOUS_RELEASE \$CURRENT_PATH
+              exit 1
+            fi
+
+            ln -sfn \$RELEASE_PATH \$CURRENT_PATH
+            cd \$DEPLOY_PATH/releases && ls -t | tail -n +6 | xargs -r rm -rf
+          EOF

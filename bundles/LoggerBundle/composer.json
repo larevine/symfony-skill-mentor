@@ -1,0 +1,22 @@
+{
+    "name": "otus/logger-bundle",
+    "type": "symfony-bundle",
+    "description": "Advanced logging functionality for Symfony applications",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "symfony/framework-bundle": "^6.0",
+        "symfony/dependency-injection": "^6.0",
+        "symfony/config": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Otus\\LoggerBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Otus\\LoggerBundle\\Tests\\": "tests/"
+        }
+    }
+}
