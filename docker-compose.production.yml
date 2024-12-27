@@ -1,0 +1,32 @@
+services:
+  otus-nginx:
+    ports:
+      - "9777:80"  # Production port
+
+  otus-postgresql:
+    ports:
+      - '35432:5432'  # Production PostgreSQL port
+
+  otus-elasticsearch:
+    ports:
+      - "9202:9200"  # Production Elasticsearch HTTP
+      - "9302:9300"  # Production Elasticsearch TCP
+
+  otus-kibana:
+    ports:
+      - "5603:5601"  # Production Kibana port
+
+  otus-graphite:
+    ports:
+      - "8002:80"     # Production Graphite web interface
+      - "2005:2003"   # Production Graphite metrics port
+      - "8127:8125/udp"  # Production StatsD port
+
+  otus-grafana:
+    ports:
+      - "3002:3000"  # Production Grafana port
+
+  otus-rabbitmq:
+    ports:
+      - "5674:5672"  # Production RabbitMQ port
+      - "15674:15672"  # Production RabbitMQ management port
