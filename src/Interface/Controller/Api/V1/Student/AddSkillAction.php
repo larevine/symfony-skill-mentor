@@ -20,7 +20,7 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/students/{id}/skills', methods: ['POST'])]
+#[Route('/v1/students/{student_id}/skills', methods: ['POST'])]
 final class AddSkillAction extends ApiController
 {
     public function __construct(
@@ -30,11 +30,11 @@ final class AddSkillAction extends ApiController
     }
 
     public function __invoke(
-        int $id,
+        int $student_id,
         #[MapRequestPayload] AddSkillRequest $request,
     ): JsonResponse {
         try {
-            $student_id = new EntityId($id);
+            $student_id = new EntityId($student_id);
             $skill_id = new EntityId($request->skill_id);
 
             $student = $this->student_service->findById($student_id);

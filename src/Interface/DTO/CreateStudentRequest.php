@@ -19,6 +19,9 @@ readonly class CreateStudentRequest
         #[Assert\Email]
         #[Assert\Length(max: 255)]
         public string $email,
+        #[Assert\NotBlank]
+        #[Assert\Length(min: 6, max: 255)]
+        public string $password,
         /** @var array<array{skill_id: int, level: int}> */
         #[Assert\Type('array')]
         #[Assert\All([

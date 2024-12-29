@@ -49,6 +49,7 @@ class StudentFixtures extends Fixture
                 first_name: $name->getFirstName(),
                 last_name: $name->getLastName(),
                 email: $email->getValue(),
+                password: $student_data['password'],
             );
 
             $student->setPassword(

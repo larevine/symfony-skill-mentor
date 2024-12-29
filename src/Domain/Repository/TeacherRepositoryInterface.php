@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Repository;
 
 use App\Domain\Entity\Teacher;
-use App\Interface\DTO\TeacherFilterRequest;
+use App\Interface\DTO\Filter\TeacherFilterRequest;
 
 interface TeacherRepositoryInterface
 {
     public function findById(int $id): ?Teacher;
+
+    public function findOneByEmail(string $email): ?Teacher;
 
     /**
      * @return array<Teacher>
@@ -20,8 +22,6 @@ interface TeacherRepositoryInterface
      * @return array<Teacher>
      */
     public function findByFilter(TeacherFilterRequest $filter): array;
-
-    public function countByFilter(TeacherFilterRequest $filter): int;
 
     public function save(Teacher $entity): void;
 

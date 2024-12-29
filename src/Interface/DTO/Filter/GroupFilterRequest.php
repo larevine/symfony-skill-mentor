@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Interface\DTO;
+namespace App\Interface\DTO\Filter;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-class TeacherFilterRequest
+readonly class GroupFilterRequest
 {
     public function __construct(
         #[Assert\Length(min: 2, max: 255)]
@@ -19,7 +19,7 @@ class TeacherFilterRequest
                 new Assert\Positive(),
             ],
         ])]
-        public ?array $skill_ids = null,
+        public ?array $teacher_ids = null,
         /** @var array<int>|null */
         #[Assert\Type('array')]
         #[Assert\All([
@@ -28,11 +28,11 @@ class TeacherFilterRequest
                 new Assert\Positive(),
             ],
         ])]
-        public ?array $group_ids = null,
+        public ?array $required_skill_ids = null,
         #[Assert\Type('boolean')]
-        public ?bool $available_for_groups = null,
+        public ?bool $has_available_spots = null,
         #[Assert\Type('integer')]
-        #[Assert\PositiveOrZero]
+        #[Assert\Range(min: 1)]
         public int $page = 1,
         #[Assert\Type('integer')]
         #[Assert\Range(min: 1, max: 100)]
@@ -41,7 +41,7 @@ class TeacherFilterRequest
         #[Assert\Type('array')]
         #[Assert\All([
             'constraints' => [
-                new Assert\Choice(['first_name', 'last_name', 'email']),
+                new Assert\Choice(['name', 'max_students']),
             ],
         ])]
         public ?array $sort_by = null,

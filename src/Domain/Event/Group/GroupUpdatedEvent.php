@@ -8,6 +8,8 @@ use App\Domain\Event\DomainEventInterface;
 
 class GroupUpdatedEvent implements DomainEventInterface
 {
+    public const NAME = 'group.updated';
+
     public function __construct(
         private readonly int $group_id,
         private readonly array $group_info
@@ -16,7 +18,7 @@ class GroupUpdatedEvent implements DomainEventInterface
 
     public function getEventName(): string
     {
-        return 'group.updated';
+        return self::NAME;
     }
 
     public function getGroupId(): int
@@ -29,7 +31,7 @@ class GroupUpdatedEvent implements DomainEventInterface
         return $this->group_info;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

@@ -16,11 +16,11 @@ use App\Domain\Event\Teacher\TeacherUpdatedEvent;
 use App\Domain\Exception\TeacherException;
 use App\Domain\Repository\SkillRepositoryInterface;
 use App\Domain\Repository\TeacherRepositoryInterface;
+use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\PersonName;
-use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\TeacherFilterRequest;
+use App\Interface\DTO\Filter\TeacherFilterRequest;
 use DomainException;
 use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
@@ -52,67 +52,14 @@ readonly class TeacherService implements TeacherServiceInterface
      */
     public function findByFilter(TeacherFilterRequest $filter): array
     {
-        $criteria = $this->buildFilterCriteria($filter);
-        $order_by = $this->buildSortOrder($filter);
-        $limit = $filter->per_page;
-        $offset = ($filter->page - 1) * $filter->per_page;
-
-        return $this->teacher_repository->findBy($criteria, $order_by, $limit, $offset);
-    }
-
-    public function countByFilter(TeacherFilterRequest $filter): int
-    {
-        $criteria = $this->buildFilterCriteria($filter);
-        return $this->teacher_repository->count($criteria);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildFilterCriteria(TeacherFilterRequest $filter): array
-    {
-        $criteria = [];
-
-        if ($filter->search !== null) {
-            $criteria['name'] = $filter->search;
-        }
-
-        if ($filter->available_for_groups === true) {
-            $criteria['available_for_groups'] = true;
-        }
-
-        if ($filter->skill_ids !== null) {
-            $criteria['skill_id'] = $filter->skill_ids;
-        }
-
-        if ($filter->group_ids !== null) {
-            $criteria['group_id'] = $filter->group_ids;
-        }
-
-        return $criteria;
-    }
-
-    /**
-     * @return array<string, string>|null
-     */
-    private function buildSortOrder(TeacherFilterRequest $filter): ?array
-    {
-        if (!isset($filter->sort_by)) {
-            return null;
-        }
-
-        $order_by = [];
-        foreach ($filter->sort_by as $field) {
-            $order_by[$field] = $filter->sort_order ?? 'asc';
-        }
-
-        return $order_by;
+        return $this->teacher_repository->findByFilter($filter);
     }
 
     public function create(
         string $first_name,
         string $last_name,
         string $email,
+        string $password,
         array $roles = ['ROLE_TEACHER'],
         int $max_groups = 2,
     ): Teacher {
@@ -120,10 +67,15 @@ readonly class TeacherService implements TeacherServiceInterface
             $person_name = new PersonName($first_name, $last_name);
             $email_vo = new Email($email);
 
+            if ($this->teacher_repository->findOneByEmail($email_vo->getValue()) !== null) {
+                throw new DomainException("Teacher with email {$email} already exists");
+            }
+
             $teacher = new Teacher(
                 $person_name->getFirstName(),
                 $person_name->getLastName(),
                 $email_vo->getValue(),
+                $password,
                 $roles,
                 $max_groups
             );
@@ -133,13 +85,15 @@ readonly class TeacherService implements TeacherServiceInterface
             $event = new TeacherCreatedEvent(
                 $teacher->getId(),
                 [
-                    'first_name' => $first_name,
-                    'last_name' => $last_name,
-                    'email' => $email,
+                    'first_name' => $teacher->getFirstName(),
+                    'last_name' => $teacher->getLastName(),
+                    'email' => $teacher->getEmail(),
+                    'roles' => $teacher->getRoles(),
+                    'max_groups' => $teacher->getMaxGroups(),
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
 
@@ -160,10 +114,18 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $event = new TeacherUpdatedEvent(
                 $teacher->getId(),
-                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+                [
+                    'teacher_id' => $teacher->getId(),
+                    'group_id' => $group->getId(),
+                    'first_name' => $teacher->getFirstName(),
+                    'last_name' => $teacher->getLastName(),
+                    'email' => $teacher->getEmail(),
+                    'roles' => $teacher->getRoles(),
+                    'max_groups' => $teacher->getMaxGroups(),
+                ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -182,10 +144,18 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $event = new TeacherUpdatedEvent(
                 $teacher->getId(),
-                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+                [
+                    'teacher_id' => $teacher->getId(),
+                    'group_id' => $group->getId(),
+                    'first_name' => $teacher->getFirstName(),
+                    'last_name' => $teacher->getLastName(),
+                    'email' => $teacher->getEmail(),
+                    'roles' => $teacher->getRoles(),
+                    'max_groups' => $teacher->getMaxGroups(),
+                ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -209,7 +179,7 @@ readonly class TeacherService implements TeacherServiceInterface
             $level->getLabel()
         );
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }
@@ -227,7 +197,7 @@ readonly class TeacherService implements TeacherServiceInterface
             $skill->getId()
         );
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }
@@ -254,10 +224,12 @@ readonly class TeacherService implements TeacherServiceInterface
                     'first_name' => $first_name,
                     'last_name' => $last_name,
                     'email' => $email,
+                    'roles' => $teacher->getRoles(),
+                    'max_groups' => $max_groups,
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -267,11 +239,12 @@ readonly class TeacherService implements TeacherServiceInterface
 
     public function delete(Teacher $teacher): void
     {
+        $teacher_id = $teacher->getId();
         $this->teacher_repository->remove($teacher);
 
-        $event = new TeacherDeletedEvent($teacher->getId());
+        $event = new TeacherDeletedEvent($teacher_id);
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }

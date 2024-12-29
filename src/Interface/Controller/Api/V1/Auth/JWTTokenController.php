@@ -46,7 +46,7 @@ final class JWTTokenController extends AbstractController
 
             $token = $this->jwt_manager->create($user);
 
-            return $this->json(AuthResponse::fromUserAndToken($token));
+            return $this->json(AuthResponse::fromUserAndToken($token)->toArray());
         } catch (BadRequestHttpException $e) {
             return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         } catch (Exception $e) {

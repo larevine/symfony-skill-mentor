@@ -7,10 +7,16 @@ namespace App\Domain\Repository;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Student;
 use App\Domain\Entity\Teacher;
+use App\Domain\Request\GroupFilterRequest;
 
 interface GroupRepositoryInterface
 {
     public function findById(int $id): ?Group;
+
+    /**
+     * @return array<Group>
+     */
+    public function findByFilter(GroupFilterRequest $filter): array;
 
     /**
      * @return array<Group>

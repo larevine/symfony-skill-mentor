@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Interface\Controller\Api\V1\Teacher;
 
 use App\Domain\Service\TeacherServiceInterface;
-use App\Domain\Event\Teacher\TeacherSkillRemovedEvent;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\TeacherResponse;
@@ -15,7 +14,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/teachers/{id}/skills/{skill_id}', methods: ['DELETE'])]
+#[Route('/v1/teachers/{teacher_id}/skills/{skill_id}', methods: ['DELETE'])]
 final class RemoveSkillAction extends ApiController
 {
     public function __construct(
@@ -23,10 +22,10 @@ final class RemoveSkillAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id, int $skill_id): JsonResponse
+    public function __invoke(int $teacher_id, int $skill_id): JsonResponse
     {
         try {
-            $teacher_id = new EntityId($id);
+            $teacher_id = new EntityId($teacher_id);
             $teacher = $this->teacher_service->findById($teacher_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 

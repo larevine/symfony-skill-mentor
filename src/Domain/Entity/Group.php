@@ -54,15 +54,15 @@ class Group
     private string $name;
 
     #[ORM\ManyToOne(targetEntity: Teacher::class, inversedBy: 'groups')]
-    #[ORM\JoinColumn(name: 'teacher_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'teacher_id', nullable: true, onDelete: 'SET NULL')]
     #[Groups(['group:read'])]
-    private Teacher $teacher;
+    private ?Teacher $teacher = null;
 
-    #[ORM\ManyToMany(targetEntity: Student::class, mappedBy: 'groups')]
+    #[ORM\ManyToMany(targetEntity: Student::class, mappedBy: 'groups', cascade: ['persist'])]
     #[Groups(['group:read'])]
     private Collection $students;
 
-    #[ORM\OneToMany(targetEntity: SkillProficiency::class, mappedBy: 'group', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: SkillProficiency::class, mappedBy: 'group', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $skills;
 
     #[ORM\Column(name: 'min_students', type: Types::INTEGER)]
@@ -77,12 +77,11 @@ class Group
 
     public function __construct(
         string $name,
-        Teacher $teacher,
+        ?Teacher $teacher = null,
         int $min_students = 1,
         int $max_students = 20,
     ) {
         $this->name = $name;
-        $this->teacher = $teacher;
         $this->capacity = new GroupCapacity($min_students, $max_students);
 
         // Сохраняем значения для Doctrine
@@ -91,6 +90,10 @@ class Group
 
         $this->students = new ArrayCollection();
         $this->skills = new ArrayCollection();
+
+        if ($teacher !== null) {
+            $this->setTeacher($teacher);
+        }
     }
 
     public function getId(): ?int
@@ -108,33 +111,44 @@ class Group
         $this->name = $name;
     }
 
-    public function getTeacher(): Teacher
+    public function getTeacher(): ?Teacher
     {
         return $this->teacher;
     }
 
-    public function setTeacher(Teacher $teacher): void
+    public function setTeacher(?Teacher $teacher): void
     {
-        // Удаляем группу у текущего учителя
         if ($this->teacher !== $teacher) {
-            $this->teacher->removeGroup($this);
-        }
+            $old_teacher = $this->teacher;
+            $this->teacher = $teacher;
 
-        $this->teacher = $teacher;
-        $teacher->addGroup($this);
+            if ($old_teacher !== null) {
+                $old_teacher->removeGroup($this);
+            }
+
+            if ($teacher !== null) {
+                $teacher->addGroup($this);
+            }
+        }
     }
 
-    public function addTeacher(Teacher $teacher): void
+    public function addTeacher(?Teacher $teacher): void
     {
         $this->setTeacher($teacher);
     }
 
-    public function removeTeacher(Teacher $teacher): void
+    public function removeTeacher(?Teacher $teacher): void
     {
         if ($this->teacher === $teacher) {
             $this->teacher->removeGroup($this);
-            $this->teacher = $teacher; // Сохраняем текущего учителя, так как поле не может быть null
+            $this->teacher = null;
         }
+    }
+
+    public function assignTeacher(Teacher $teacher): void
+    {
+        $this->teacher = $teacher;
+        $teacher->addGroup($this);
     }
 
     /**
@@ -147,10 +161,6 @@ class Group
 
     public function addStudent(Student $student): void
     {
-        if (!$this->capacity->canAcceptMoreStudents($this->students->count())) {
-            throw new DomainException('Group has reached maximum capacity');
-        }
-
         if (!$this->students->contains($student)) {
             $this->students->add($student);
             $student->addGroup($this);

@@ -31,15 +31,15 @@ class SkillProficiency
     private Skill $skill;
 
     #[ORM\ManyToOne(targetEntity: Teacher::class, inversedBy: 'skills')]
-    #[ORM\JoinColumn(name: 'teacher_id', nullable: true)]
+    #[ORM\JoinColumn(name: 'teacher_id', nullable: true, onDelete: 'CASCADE')]
     private ?Teacher $teacher = null;
 
     #[ORM\ManyToOne(targetEntity: Student::class, inversedBy: 'skills')]
-    #[ORM\JoinColumn(name: 'student_id', nullable: true)]
+    #[ORM\JoinColumn(name: 'student_id', nullable: true, onDelete: 'CASCADE')]
     private ?Student $student = null;
 
     #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'skills')]
-    #[ORM\JoinColumn(name: 'group_id', nullable: true)]
+    #[ORM\JoinColumn(name: 'group_id', nullable: true, onDelete: 'CASCADE')]
     private ?Group $group = null;
 
     #[ORM\Column(type: Types::INTEGER)]

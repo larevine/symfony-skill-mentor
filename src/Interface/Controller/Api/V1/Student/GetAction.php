@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/students/{id}', methods: ['GET'])]
+#[Route('/v1/students/{student_id}', methods: ['GET'])]
 final class GetAction extends ApiController
 {
     public function __construct(
@@ -26,24 +26,24 @@ final class GetAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $student_id): JsonResponse
     {
         try {
-            $cache_key = 'student_' . $id;
+            $cache_key = 'student_' . $student_id;
             $cache_item = $this->student_pool->getItem($cache_key);
 
             if ($cache_item->isHit()) {
                 return $this->json($cache_item->get());
             }
 
-            $student_id = new EntityId($id);
+            $student_id = new EntityId($student_id);
             $student = $this->student_service->findById($student_id);
             $this->validateEntityExists($student, 'Student not found');
 
             $response = StudentResponse::fromEntity($student);
 
             $cache_item->set($response);
-            $cache_item->tag(['students', 'student_' . $id]);
+            $cache_item->tag(['students', 'student_' . $student_id->getValue()]);
             $cache_item->expiresAfter($this->cache_ttl);
             $this->student_pool->save($cache_item);
 

@@ -35,7 +35,7 @@ class TeacherSkillAddedEvent implements DomainEventInterface
         return $this->level;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

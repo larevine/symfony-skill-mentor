@@ -37,6 +37,7 @@ final class CreateAction extends ApiController
                 first_name: $first_name->getFirstName(),
                 last_name: $first_name->getLastName(),
                 email: $email->getValue(),
+                password: $request->password,
                 max_groups: $request->max_groups,
             );
 

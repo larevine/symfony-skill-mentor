@@ -7,7 +7,7 @@ namespace App\Infrastructure\Repository\Doctrine;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Student;
 use App\Domain\Repository\StudentRepositoryInterface;
-use App\Interface\DTO\StudentFilterRequest;
+use App\Interface\DTO\Filter\StudentFilterRequest;
 use Doctrine\ORM\QueryBuilder;
 
 class StudentRepository extends AbstractBaseRepository implements StudentRepositoryInterface
@@ -17,22 +17,17 @@ class StudentRepository extends AbstractBaseRepository implements StudentReposit
         return $this->find($id);
     }
 
+    public function findOneByEmail(string $email): ?Student
+    {
+        return $this->findOneBy(['email' => $email]);
+    }
+
     /**
      * @return array<Student>
      */
     public function findAll(): array
     {
         return parent::findAll();
-    }
-
-    public function findByDesiredSkill(int $skill_id): array
-    {
-        $qb = $this->createQueryBuilder('s')
-            ->join('s.desired_skills', 'ds')
-            ->where('ds.id = :skill_id')
-            ->setParameter('skill_id', $skill_id);
-
-        return $qb->getQuery()->getResult();
     }
 
     public function findWithoutGroup(): array
@@ -48,14 +43,13 @@ class StudentRepository extends AbstractBaseRepository implements StudentReposit
     {
         $qb = $this->createQueryBuilder('s')
             ->leftJoin('s.groups', 'g')
-            ->leftJoin('s.skills', 'sp')
-            ->leftJoin('sp.skill', 'sk')
-            ->leftJoin('g.required_skills', 'grs')
+            ->leftJoin('s.skill_proficiencies', 'sp')
+            ->leftJoin('sp.skill', 'skill')
             ->where('g.id IS NULL')
-            ->andWhere('sk.id IN (:required_skills)')
+            ->andWhere('skill.id IN (:required_skills)')
             ->setParameter('required_skills', $group->getRequiredSkills()->map(fn ($s) => $s->getId())->toArray())
             ->groupBy('s.id')
-            ->having('COUNT(DISTINCT sk.id) >= :required_skill_count')
+            ->having('COUNT(DISTINCT skill.id) >= :required_skill_count')
             ->setParameter('required_skill_count', $group->getRequiredSkills()->count());
 
         return $qb->getQuery()->getResult();
@@ -76,52 +70,47 @@ class StudentRepository extends AbstractBaseRepository implements StudentReposit
         return $qb->getQuery()->getResult();
     }
 
-    public function countByFilter(StudentFilterRequest $filter): int
-    {
-        $qb = $this->createFilterQueryBuilder($filter)
-            ->select('COUNT(DISTINCT s.id)');
-
-        return (int) $qb->getQuery()->getSingleScalarResult();
-    }
-
     private function createFilterQueryBuilder(StudentFilterRequest $filter): QueryBuilder
     {
         $qb = $this->createQueryBuilder('s')
-            ->leftJoin('s.skills', 'sp')
-            ->leftJoin('sp.skill', 'skill');
+            ->select('s');
 
-        if ($filter->getSkillIds() !== null && count($filter->getSkillIds()) > 0) {
-            $qb->andWhere('skill.id IN (:skillIds)')
-                ->setParameter('skillIds', $filter->getSkillIds());
+        if ($filter->getSkillIds()) {
+            $qb->leftJoin('s.skill_proficiencies', 'sp')
+                ->leftJoin('sp.skill', 'skill');
         }
 
-        if ($filter->getMinSkillLevel() !== null) {
-            $qb->andWhere('sp.level >= :minLevel')
-                ->setParameter('minLevel', $filter->getMinSkillLevel());
+        if ($filter->getGroupIds()) {
+            $qb->leftJoin('s.groups', 'g');
         }
 
-        if ($filter->getMaxSkillLevel() !== null) {
-            $qb->andWhere('sp.level <= :maxLevel')
-                ->setParameter('maxLevel', $filter->getMaxSkillLevel());
-        }
+        $this->applyFilterConditions($qb, $filter);
 
-        if ($filter->getSearchTerm() !== null) {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    $qb->expr()->like('s.first_name', ':searchTerm'),
-                    $qb->expr()->like('s.last_name', ':searchTerm'),
-                    $qb->expr()->like('s.email', ':searchTerm')
-                )
-            )
-                ->setParameter('searchTerm', '%' . $filter->getSearchTerm() . '%');
+        // Apply sorting
+        if ($filter->getSortBy()) {
+            $sort_field = match ($filter->getSortBy()) {
+                'first_name', 'last_name', 'email' => 's.' . $filter->getSortBy(),
+                default => 's.id'
+            };
+            $qb->addOrderBy($sort_field, $filter->getSortOrder() ?? 'ASC');
         }
 
         return $qb;
     }
 
-    private function buildFilterCriteria(StudentFilterRequest $filter, QueryBuilder $qb): void
+    private function applyFilterConditions(QueryBuilder $qb, StudentFilterRequest $filter): void
     {
-        if ($filter->search) {
+        if ($filter->getSkillIds()) {
+            $qb->andWhere('skill.id IN (:skill_ids)')
+                ->setParameter('skill_ids', $filter->getSkillIds());
+        }
+
+        if ($filter->getGroupIds()) {
+            $qb->andWhere('g.id IN (:group_ids)')
+                ->setParameter('group_ids', $filter->getGroupIds());
+        }
+
+        if ($filter->getSearch()) {
             $qb->andWhere(
                 $qb->expr()->orX(
                     $qb->expr()->like('s.first_name', ':search'),
@@ -129,42 +118,7 @@ class StudentRepository extends AbstractBaseRepository implements StudentReposit
                     $qb->expr()->like('s.email', ':search')
                 )
             )
-            ->setParameter('search', '%' . $filter->search . '%');
+                ->setParameter('search', '%' . $filter->getSearch() . '%');
         }
-
-        if ($filter->skill_ids) {
-            $qb->andWhere('sp.skill IN (:skill_ids)')
-                ->setParameter('skill_ids', $filter->skill_ids);
-        }
-
-        if ($filter->group_ids) {
-            $qb->andWhere('g.id IN (:group_ids)')
-                ->setParameter('group_ids', $filter->group_ids);
-        }
-    }
-
-    private function getLimit(StudentFilterRequest $filter): int
-    {
-        return $filter->per_page;
-    }
-
-    private function getOffset(StudentFilterRequest $filter): int
-    {
-        return ($filter->page - 1) * $filter->per_page;
-    }
-
-    private function getSearchTerm(StudentFilterRequest $filter): ?string
-    {
-        return $filter->search;
-    }
-
-    private function getMinSkillLevel(StudentFilterRequest $filter): ?int
-    {
-        return $filter->min_skill_level ?? null;
-    }
-
-    private function getMaxSkillLevel(StudentFilterRequest $filter): ?int
-    {
-        return $filter->max_skill_level ?? null;
     }
 }

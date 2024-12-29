@@ -8,12 +8,27 @@ use App\Domain\Entity\Group;
 use App\Domain\Entity\Student;
 use App\Domain\Entity\Teacher;
 use App\Domain\Repository\GroupRepositoryInterface;
+use App\Domain\Request\GroupFilterRequest;
 
 class GroupRepository extends AbstractBaseRepository implements GroupRepositoryInterface
 {
     public function findById(int $id): ?Group
     {
         return $this->find($id);
+    }
+
+    public function findByFilter(GroupFilterRequest $filter): array
+    {
+        $qb = $this->createQueryBuilder('g');
+
+        if ($filter->search !== null) {
+            $qb->andWhere('g.name LIKE :search')
+               ->setParameter('search', '%' . $filter->search . '%');
+        } else {
+            $qb->andWhere('1 = 1');
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
@@ -70,7 +85,34 @@ class GroupRepository extends AbstractBaseRepository implements GroupRepositoryI
      */
     public function findBy(array $criteria, array $orderBy = null, ?int $limit = null, ?int $offset = null): array
     {
-        return parent::findBy($criteria, $orderBy, $limit, $offset);
+        $qb = $this->createQueryBuilder('g');
+
+        if (isset($criteria['name'])) {
+            $qb->andWhere('g.name LIKE :search')
+               ->setParameter('search', '%' . $criteria['name'] . '%');
+            unset($criteria['name']);
+        }
+
+        foreach ($criteria as $field => $value) {
+            $qb->andWhere("g.$field = :$field")
+               ->setParameter($field, $value);
+        }
+
+        if ($orderBy !== null) {
+            foreach ($orderBy as $field => $order) {
+                $qb->addOrderBy("g.$field", $order);
+            }
+        }
+
+        if ($limit !== null) {
+            $qb->setMaxResults($limit);
+        }
+
+        if ($offset !== null) {
+            $qb->setFirstResult($offset);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     public function isGroupFull(Group $group): bool

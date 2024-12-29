@@ -23,7 +23,7 @@ class TeacherDeletedEvent implements DomainEventInterface
         return $this->teacher_id;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

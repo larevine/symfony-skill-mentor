@@ -49,12 +49,7 @@ readonly class GroupCapacity
 
     public function hasMinimumStudents(int $current_count): bool
     {
-        return $current_count >= $this->min_students;
-    }
-
-    public function getRemainingCapacity(int $current_count): int
-    {
-        return $this->max_students - $current_count;
+        return $current_count <= $this->min_students;
     }
 
     public function equals(self $other): bool

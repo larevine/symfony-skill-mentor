@@ -7,15 +7,16 @@ namespace App\Interface\DTO;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\SkillProficiency;
 use App\Domain\Entity\Teacher;
+use JsonSerializable;
 
-readonly class TeacherResponse
+readonly class TeacherResponse implements JsonSerializable
 {
     /**
      * @param array<GroupResponse> $groups
      * @param array<SkillResponse> $skills
      */
     public function __construct(
-        public int $id,
+        public ?int $id,
         public string $email,
         public string $first_name,
         public string $last_name,
@@ -30,8 +31,8 @@ readonly class TeacherResponse
         return new self(
             id: $teacher->getId(),
             email: $teacher->getEmail(),
-            first_name: $teacher->getName()->getFirstName(),
-            last_name: $teacher->getName()->getLastName(),
+            first_name: $teacher->getFirstName(),
+            last_name: $teacher->getLastName(),
             max_groups: $teacher->getMaxGroups(),
             groups: $include_groups ? array_map(
                 static fn (Group $group): GroupResponse => GroupResponse::fromEntity($group),
@@ -44,8 +45,21 @@ readonly class TeacherResponse
         );
     }
 
-    public function getValue(): int
+    public function getValue(): ?int
     {
         return $this->id;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'email' => $this->email,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'max_groups' => $this->max_groups,
+            'groups' => $this->groups,
+            'skills' => $this->skills,
+        ];
     }
 }

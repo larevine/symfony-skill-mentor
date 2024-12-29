@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/groups/{id}', methods: ['PUT'])]
+#[Route('/v1/groups/{group_id}', methods: ['PUT'])]
 final class UpdateAction extends ApiController
 {
     public function __construct(
@@ -28,11 +28,11 @@ final class UpdateAction extends ApiController
     }
 
     public function __invoke(
-        int $id,
+        int $group_id,
         #[MapRequestPayload] UpdateGroupRequest $request,
     ): JsonResponse {
         try {
-            $group_id = new EntityId($id);
+            $group_id = new EntityId($group_id);
 
             $group = $this->group_service->findById($group_id);
             $this->validateEntityExists($group, 'Group not found');
@@ -51,6 +51,7 @@ final class UpdateAction extends ApiController
             $this->group_service->update(
                 $group,
                 $request->name,
+                $request->min_students,
                 $request->max_students,
             );
 

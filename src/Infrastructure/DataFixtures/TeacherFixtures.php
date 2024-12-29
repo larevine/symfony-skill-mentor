@@ -53,6 +53,7 @@ class TeacherFixtures extends Fixture
                 first_name: $name->getFirstName(),
                 last_name: $name->getLastName(),
                 email: $email->getValue(),
+                password: $teacher_data['password'],
                 roles: $teacher_data['roles'] ?? ['ROLE_TEACHER'],
                 max_groups: $teacher_data['max_groups'],
             );

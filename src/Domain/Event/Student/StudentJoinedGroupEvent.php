@@ -29,7 +29,7 @@ class StudentJoinedGroupEvent implements DomainEventInterface
         return $this->group_id;
     }
 
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'event' => $this->getEventName(),

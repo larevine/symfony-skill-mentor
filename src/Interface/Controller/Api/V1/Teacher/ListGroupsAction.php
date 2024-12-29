@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/teachers/{id}/groups', methods: ['GET'])]
+#[Route('/v1/teachers/{teacher_id}/groups', methods: ['GET'])]
 final class ListGroupsAction extends ApiController
 {
     public function __construct(
@@ -25,17 +25,17 @@ final class ListGroupsAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $teacher_id): JsonResponse
     {
         try {
-            $cache_key = 'teacher_groups_' . $id;
+            $cache_key = 'teacher_groups_' . $teacher_id;
             $cache_item = $this->teacher_pool->getItem($cache_key);
 
             if ($cache_item->isHit()) {
                 return $this->json($cache_item->get());
             }
 
-            $teacher = $this->teacher_service->findById(new EntityId($id));
+            $teacher = $this->teacher_service->findById(new EntityId($teacher_id));
             $this->validateEntityExists($teacher, 'Teacher not found');
 
             $response = array_map(
@@ -44,7 +44,7 @@ final class ListGroupsAction extends ApiController
             );
 
             $cache_item->set($response);
-            $cache_item->tag(['teacher_groups', 'teacher_' . $id]);
+            $cache_item->tag(['teacher_groups', 'teacher_' . $teacher_id]);
             $cache_item->expiresAfter(3600);
             $this->teacher_pool->save($cache_item);
 

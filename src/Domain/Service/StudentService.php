@@ -18,11 +18,11 @@ use App\Domain\Event\Student\StudentSkillRemovedEvent;
 use App\Domain\Event\Student\StudentUpdatedEvent;
 use App\Domain\Exception\StudentException;
 use App\Domain\Repository\GroupRepositoryInterface;
-use App\Domain\Repository\StudentRepositoryInterface;
 use App\Domain\Repository\SkillRepositoryInterface;
+use App\Domain\Repository\StudentRepositoryInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\StudentFilterRequest;
+use App\Interface\DTO\Filter\StudentFilterRequest;
 use DomainException;
 use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
@@ -51,57 +51,7 @@ readonly class StudentService implements StudentServiceInterface
      */
     public function findByFilter(StudentFilterRequest $filter): array
     {
-        $criteria = $this->buildFilterCriteria($filter);
-        $order_by = $this->buildSortOrder($filter);
-        $limit = $filter->per_page;
-        $offset = ($filter->page - 1) * $filter->per_page;
-
-        return $this->student_repository->findBy($criteria, $order_by, $limit, $offset);
-    }
-
-    public function countByFilter(StudentFilterRequest $filter): int
-    {
-        $criteria = $this->buildFilterCriteria($filter);
-        return $this->student_repository->count($criteria);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildFilterCriteria(StudentFilterRequest $filter): array
-    {
-        $criteria = [];
-
-        if ($filter->search !== null) {
-            $criteria['name'] = $filter->search;
-        }
-
-        if ($filter->skill_ids !== null) {
-            $criteria['skill_id'] = $filter->skill_ids;
-        }
-
-        if ($filter->group_ids !== null) {
-            $criteria['group_id'] = $filter->group_ids;
-        }
-
-        return $criteria;
-    }
-
-    /**
-     * @return array<string, string>|null
-     */
-    private function buildSortOrder(StudentFilterRequest $filter): ?array
-    {
-        if (!isset($filter->sort_by)) {
-            return null;
-        }
-
-        $order_by = [];
-        foreach ($filter->sort_by as $field) {
-            $order_by[$field] = $filter->sort_order ?? 'asc';
-        }
-
-        return $order_by;
+        return $this->student_repository->findByFilter($filter);
     }
 
     public function joinGroup(Student $student, Group $group): void
@@ -118,7 +68,7 @@ readonly class StudentService implements StudentServiceInterface
                 $group->getId()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -144,7 +94,7 @@ readonly class StudentService implements StudentServiceInterface
                 $group->getId()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -166,7 +116,7 @@ readonly class StudentService implements StudentServiceInterface
             $level->getLabel()
         );
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }
@@ -184,7 +134,7 @@ readonly class StudentService implements StudentServiceInterface
             $skill->getId()
         );
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }
@@ -204,7 +154,7 @@ readonly class StudentService implements StudentServiceInterface
                 $level->getLabel()
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -216,37 +166,49 @@ readonly class StudentService implements StudentServiceInterface
         string $first_name,
         string $last_name,
         string $email,
+        string $password,
         array $initial_skills = [],
     ): Student {
         try {
-            // Create student
-            $student = new Student($first_name, $last_name, $email);
+            $existing_student = $this->student_repository->findOneByEmail($email);
+            if ($existing_student !== null) {
+                throw new DomainException("Student with email {$email} already exists");
+            }
 
-            // Save first to get ID
-            $this->student_repository->save($student);
+            // Create student
+            $student = new Student(
+                $first_name,
+                $last_name,
+                $email,
+                password_hash($password, PASSWORD_DEFAULT),
+                ['ROLE_STUDENT']
+            );
 
             // Add initial skills if provided
             if (!empty($initial_skills)) {
-                $student_aggregate = new StudentSkillsAggregate(
-                    new EntityId($student->getId()),
-                    $this->student_repository
-                );
-
                 foreach ($initial_skills as $skill_data) {
                     $skill = $this->findSkillById(new EntityId($skill_data['skill_id']));
                     if ($skill === null) {
                         throw new DomainException(sprintf('Skill with ID %d not found', $skill_data['skill_id']));
                     }
 
-                    $student_aggregate->addSkill($skill, $skill_data['level']);
+                    $student->addSkill($skill_data['skill'], $skill_data['level']);
+                }
+            }
 
+            // Save student with all skills
+            $this->student_repository->save($student);
+
+            // Publish events
+            if (!empty($initial_skills)) {
+                foreach ($initial_skills as $skill_data) {
                     $event = new StudentSkillAddedEvent(
                         $student->getId(),
-                        $skill->getId(),
+                        $skill_data['skill']->getId(),
                         $skill_data['level']->getLabel()
                     );
                     $this->domain_events_producer->publish(
-                        json_encode($event->toArray()),
+                        json_encode($event),
                         $event->getEventName()
                     );
                 }
@@ -261,7 +223,7 @@ readonly class StudentService implements StudentServiceInterface
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
 
@@ -295,7 +257,7 @@ readonly class StudentService implements StudentServiceInterface
                 ]
             );
             $this->domain_events_producer->publish(
-                json_encode($event->toArray()),
+                json_encode($event),
                 $event->getEventName()
             );
         } catch (DomainException $e) {
@@ -309,7 +271,7 @@ readonly class StudentService implements StudentServiceInterface
 
         $event = new StudentDeletedEvent($student->getId());
         $this->domain_events_producer->publish(
-            json_encode($event->toArray()),
+            json_encode($event),
             $event->getEventName()
         );
     }

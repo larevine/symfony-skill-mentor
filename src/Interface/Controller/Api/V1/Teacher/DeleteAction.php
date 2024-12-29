@@ -8,14 +8,13 @@ use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\Exception\ApiException;
-use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/teachers/{id}', methods: ['DELETE'])]
+#[Route('/v1/teachers/{teacher_id}', methods: ['DELETE'])]
 final class DeleteAction extends ApiController
 {
     public function __construct(
@@ -23,10 +22,10 @@ final class DeleteAction extends ApiController
     ) {
     }
 
-    public function __invoke(int $id): JsonResponse
+    public function __invoke(int $teacher_id): JsonResponse
     {
         try {
-            $teacher_id = new EntityId($id);
+            $teacher_id = new EntityId($teacher_id);
             $teacher = $this->teacher_service->findById($teacher_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Interface\Controller\Api\V1\Teacher;
 
 use App\Domain\Service\TeacherServiceInterface;
-use App\Domain\Event\Teacher\TeacherSkillAddedEvent;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Domain\ValueObject\SkillLevel;
@@ -20,7 +19,7 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/teachers/{id}/skills', methods: ['POST'])]
+#[Route('/v1/teachers/{teacher_id}/skills', methods: ['POST'])]
 final class AddSkillAction extends ApiController
 {
     public function __construct(
@@ -29,11 +28,11 @@ final class AddSkillAction extends ApiController
     }
 
     public function __invoke(
-        int $id,
+        int $teacher_id,
         #[MapRequestPayload] TeacherSkillRequest $request,
     ): JsonResponse {
         try {
-            $teacher_id = new EntityId($id);
+            $teacher_id = new EntityId($teacher_id);
             $teacher = $this->teacher_service->findById($teacher_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 

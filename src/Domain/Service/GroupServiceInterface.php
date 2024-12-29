@@ -10,7 +10,7 @@ use App\Domain\Entity\Student;
 use App\Domain\Entity\Teacher;
 use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\ProficiencyLevel;
-use App\Interface\DTO\GroupFilterRequest;
+use App\Interface\DTO\Filter\GroupFilterRequest;
 
 interface GroupServiceInterface
 {
@@ -89,6 +89,12 @@ interface GroupServiceInterface
      * @see GroupService::removeStudent()
      */
     public function removeStudent(Group $group, Student $student): void;
+
+    /**
+     * Assigns a teacher to a group.
+     * @see GroupService::assignTeacher()
+     */
+    public function assignTeacher(Group $group, Teacher $teacher): void;
 
     /**
      * Adds a skill to a group with specified proficiency level.
