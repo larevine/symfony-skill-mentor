@@ -1,0 +1,41 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Otushomework\LoggerBundle\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/LoggerBundle.php'
+
+    Otushomework\LoggerBundle\Logger\DebugLogger:
+        arguments:
+            $enabled: '%otushomework_logger.debug_enabled%'
+            $log_path: '%otushomework_logger.log_path%'
+
+    Otushomework\LoggerBundle\Logger\DeprecationErrorHandler:
+        arguments:
+            $enabled: '%otushomework_logger.deprecation_logging_enabled%'
+            $log_path: '%otushomework_logger.log_path%'
+
+    Otushomework\LoggerBundle\Logger\NonDeprecationLogger:
+        arguments:
+            $log_path: '%otushomework_logger.log_path%'
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+            public: true
+
+        Otushomework\LoggerBundle\Logger\DebugLogger:
+            class: Otushomework\LoggerBundle\Tests\Mock\DummyDebugLogger
+
+        Otushomework\LoggerBundle\Logger\NonDeprecationLogger:
+            class: Otushomework\LoggerBundle\Tests\Mock\DummyNonDeprecationLogger
+
+        Otushomework\LoggerBundle\Logger\DeprecationErrorHandler:
+            class: Otushomework\LoggerBundle\Tests\Mock\DummyNonDeprecationLogger

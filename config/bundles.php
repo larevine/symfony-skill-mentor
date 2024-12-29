@@ -19,4 +19,5 @@ return [
     FOS\ElasticaBundle\FOSElasticaBundle::class => ['all' => true],
     Nelmio\ApiDocBundle\NelmioApiDocBundle::class => ['all' => true],
     Liip\TestFixturesBundle\LiipTestFixturesBundle::class => ['dev' => true, 'test' => true],
+    Otushomework\LoggerBundle\LoggerBundle::class => ['all' => true],
 ];
