@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Interface\Controller\Api\V1\Teacher;
 
 use App\Domain\Service\TeacherServiceInterface;
-use App\Domain\Event\Teacher\TeacherCreatedEvent;
 use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\PersonName;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\CreateTeacherRequest;
 use App\Interface\DTO\TeacherResponse;
 use App\Interface\Exception\ApiException;
-use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -25,7 +23,6 @@ final class CreateAction extends ApiController
 {
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
-        private readonly ProducerInterface $domain_events_producer,
     ) {
     }
 
