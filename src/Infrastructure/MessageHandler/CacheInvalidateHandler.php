@@ -9,7 +9,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
-class DomainEventHandler implements ConsumerInterface
+class CacheInvalidateHandler implements ConsumerInterface
 {
     public function __construct(
         private readonly TagAwareCacheInterface $cache,
