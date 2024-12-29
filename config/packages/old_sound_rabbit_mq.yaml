@@ -54,7 +54,7 @@ old_sound_rabbit_mq:
             queue_options:
                 name: 'domain_events'
                 routing_keys: ['teacher.#', 'student.#', 'group.#']
-            callback: App\Infrastructure\MessageHandler\DomainEventHandler
+            callback: App\Infrastructure\MessageHandler\CacheInvalidationHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1
@@ -67,7 +67,7 @@ old_sound_rabbit_mq:
             queue_options:
                 name: 'domain_events_dlq'
                 routing_key: 'domain_events_dlq'
-            callback: App\Infrastructure\MessageHandler\DomainEventHandler
+            callback: App\Infrastructure\MessageHandler\CacheInvalidationHandler
             qos_options:
                 prefetch_size: 0
                 prefetch_count: 1

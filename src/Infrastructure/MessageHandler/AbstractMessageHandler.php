@@ -20,23 +20,17 @@ abstract class AbstractMessageHandler implements ConsumerInterface
     public function execute(AMQPMessage $msg): int
     {
         try {
-            $result = $this->processMessage($msg);
-
-            // Clear Doctrine's Unit of Work after each message
-            $this->entity_manager->clear();
-
-            return $result;
+            return $this->processMessage($msg);
         } catch (\Throwable $e) {
             $this->logger->error('Error processing message', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'message' => $msg->getBody()
             ]);
-
-            // Clear Doctrine's Unit of Work even if there was an error
-            $this->entity_manager->clear();
-
             return self::MSG_REJECT;
+        } finally {
+            // Clear Doctrine's Unit of Work cleanup even in case of database connection errors
+            $this->entity_manager->clear();
         }
     }
 
