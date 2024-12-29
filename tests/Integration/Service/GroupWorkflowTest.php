@@ -69,7 +69,7 @@ class GroupWorkflowTest extends KernelTestCase
 
         // Assert teacher is assigned
         self::assertNotNull($group->getTeacher());
-        self::assertEquals($teacher->getId(), $group->getTeacher()->getId());
+        self::assertSame($teacher->getId(), $group->getTeacher()->getId());
     }
 
     public function testAddStudentsToGroup(): void

@@ -47,9 +47,9 @@ class StudentWorkflowTest extends KernelTestCase
         );
 
         self::assertInstanceOf(Student::class, $student);
-        self::assertEquals($student_data['first_name'], $student->getFirstName());
-        self::assertEquals($student_data['last_name'], $student->getLastName());
-        self::assertEquals($student_data['email'], $student->getEmail());
+        self::assertSame($student_data['first_name'], $student->getFirstName());
+        self::assertSame($student_data['last_name'], $student->getLastName());
+        self::assertSame($student_data['email'], $student->getEmail());
 
         // Try to find the student
         $filter = new StudentFilterRequest();
@@ -57,7 +57,7 @@ class StudentWorkflowTest extends KernelTestCase
         $students = $this->student_service->findByFilter($filter);
 
         self::assertCount(1, $students);
-        self::assertEquals($student->getId(), $students[0]->getId());
+        self::assertSame($student->getId(), $students[0]->getId());
     }
 
     public function testPreventDuplicateEmails(): void

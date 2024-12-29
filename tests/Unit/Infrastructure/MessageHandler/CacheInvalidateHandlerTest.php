@@ -9,23 +9,23 @@ use App\Domain\Event\Teacher\TeacherDeletedEvent;
 use App\Domain\Event\Teacher\TeacherSkillAddedEvent;
 use App\Domain\Event\Teacher\TeacherSkillRemovedEvent;
 use App\Domain\Event\Teacher\TeacherUpdatedEvent;
-use App\Infrastructure\MessageHandler\DomainEventHandler;
+use App\Infrastructure\MessageHandler\CacheInvalidateHandler;
 use PhpAmqpLib\Message\AMQPMessage;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
-class DomainEventHandlerTest extends TestCase
+class CacheInvalidateHandlerTest extends TestCase
 {
     private TagAwareCacheInterface $cache;
     private LoggerInterface $logger;
-    private DomainEventHandler $handler;
+    private CacheInvalidateHandler $handler;
 
     protected function setUp(): void
     {
         $this->cache = $this->createMock(TagAwareCacheInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->handler = new DomainEventHandler($this->cache, $this->logger);
+        $this->handler = new CacheInvalidateHandler($this->cache, $this->logger);
     }
 
     public function testTeacherCreatedEventInvalidatesCache(): void
