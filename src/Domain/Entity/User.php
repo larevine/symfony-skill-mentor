@@ -120,7 +120,6 @@ abstract class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function updateName(PersonName $name): void
     {
-        $this->name = $name;
         $this->first_name = $name->getFirstName();
         $this->last_name = $name->getLastName();
     }

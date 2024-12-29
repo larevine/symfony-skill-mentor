@@ -33,7 +33,7 @@ final class DeleteAction extends ApiController
 
             $this->group_service->delete($group);
 
-            return $this->json(null, Response::HTTP_NO_CONTENT);
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

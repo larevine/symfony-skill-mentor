@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Student;
 
-use DomainException;
 use App\Domain\Service\StudentServiceInterface;
-use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\Name;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\StudentResponse;
 use App\Interface\DTO\UpdateStudentRequest;
 use App\Interface\Exception\ApiException;
+use DomainException;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -33,6 +34,7 @@ final class UpdateAction extends ApiController
     ): JsonResponse {
         try {
             $student_id = new EntityId($id);
+
             $student = $this->student_service->findById($student_id);
             $this->validateEntityExists($student, 'Student not found');
 
@@ -47,7 +49,7 @@ final class UpdateAction extends ApiController
                 email: $email?->getValue() ?? $student->getEmail(),
             );
 
-            return $this->json(StudentResponse::fromEntity($student));
+            return $this->json(StudentResponse::fromEntity($student), Response::HTTP_OK);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

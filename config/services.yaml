@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    cache_ttl: '%env(int:CACHE_TTL)%'
     # Добавление параметров, например
     # app.some_parameter: 'some_value'
 
@@ -20,16 +21,15 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Domain/Entity/'
+            - '../src/Domain/ValueObject/'
             - '../src/Kernel.php'
 
-    App\Application\Doctrine\PostGenerateSchemaEventListener:
+    # Exception Listener для логирования 500-х ошибок
+    App\EventListener\ExceptionListener:
         tags:
-            - { name: doctrine.event_listener, event: postGenerateSchema }
+            - { name: kernel.event_listener, event: kernel.exception }
 
-    # Name Converter
-    Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter: ~
-
-    # Репозитории
+    # Repositories
     App\Infrastructure\Repository\Doctrine\GroupRepository:
         arguments:
             $entity_class: App\Domain\Entity\Group
@@ -50,7 +50,7 @@ services:
         arguments:
             $entity_class: App\Domain\Entity\User
 
-    # Интерфейсы репозиториев
+    # Repository Interfaces
     App\Domain\Repository\TeacherRepositoryInterface:
         alias: App\Infrastructure\Repository\Doctrine\TeacherRepository
 
@@ -66,12 +66,7 @@ services:
     App\Domain\Repository\UserRepositoryInterface:
         alias: App\Infrastructure\Repository\Doctrine\UserRepository
 
-    # Сервисы безопасности
-    App\Infrastructure\Security\Provider\TokenUserProvider:
-        arguments:
-            $user_repository: '@App\Domain\Repository\UserRepositoryInterface'
-
-    # Доменные сервисы
+    # Domain Services
     App\Domain\Service\GroupService:
         arguments:
             $group_repository: '@App\Domain\Repository\GroupRepositoryInterface'
@@ -81,6 +76,8 @@ services:
         arguments:
             $teacher_repository: '@App\Domain\Repository\TeacherRepositoryInterface'
             $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
+            $teacher_skills_producer: '@old_sound_rabbit_mq.teacher_skills_producer'
+            $domain_events_producer: '@old_sound_rabbit_mq.domain_events_producer'
 
     App\Domain\Service\StudentService:
         arguments:
@@ -91,7 +88,7 @@ services:
         arguments:
             $skill_repository: '@App\Domain\Repository\SkillRepositoryInterface'
 
-    # Интерфейсы сервисов
+    # Service Interfaces
     App\Domain\Service\GroupServiceInterface:
         alias: App\Domain\Service\GroupService
 
@@ -104,7 +101,80 @@ services:
     App\Domain\Service\SkillServiceInterface:
         alias: App\Domain\Service\SkillService
 
+    # Cache configuration
+    Symfony\Component\Cache\Adapter\TagAwareAdapterInterface: '@cache.app.taggable'
+
+    # RabbitMQ producers
+    teacher_skills_producer:
+        class: OldSound\RabbitMqBundle\RabbitMq\Producer
+        arguments: ['@old_sound_rabbit_mq.connection.default']
+        calls:
+            - [setExchangeOptions, [{ name: 'teacher_skills', type: direct }]]
+
+    teacher_groups_producer:
+        class: OldSound\RabbitMqBundle\RabbitMq\Producer
+        arguments: ['@old_sound_rabbit_mq.connection.default']
+        calls:
+            - [setExchangeOptions, [{ name: 'teacher_groups', type: direct }]]
+
+    cache_invalidation_producer:
+        class: OldSound\RabbitMqBundle\RabbitMq\Producer
+        arguments: ['@old_sound_rabbit_mq.connection.default']
+        calls:
+            - [setExchangeOptions, [{ name: 'cache_invalidation', type: direct }]]
+
+    domain_events_producer:
+        class: OldSound\RabbitMqBundle\RabbitMq\Producer
+        arguments: ['@old_sound_rabbit_mq.connection.default']
+        calls:
+            - [setExchangeOptions, [{ name: 'domain_events', type: direct }]]
+
+    App\Infrastructure\Logger\DeprecationErrorHandler:
+        arguments:
+            $deprecationLogger: '@monolog.logger.deprecation'
+        calls:
+            - [register]
+
+    App\Infrastructure\Logger\NonDeprecationLogger:
+        arguments:
+            $mainLogger: '@monolog.logger.cache_invalidation'
+            $deprecationLogger: '@monolog.logger.deprecation'
+
+    OldSound\RabbitMqBundle\RabbitMq\Consumer:
+        calls:
+            - [setLogger, ['@App\Infrastructure\Logger\NonDeprecationLogger']]
+
+    # Для MessageHandler используем внедрение через конструктор
+    App\Infrastructure\MessageHandler\CacheInvalidationMessageHandler:
+        arguments:
+            $logger: '@App\Infrastructure\Logger\NonDeprecationLogger'
+
     # API Controllers
     App\Interface\Controller\Api\V1\:
         resource: '../src/Interface/Controller/Api/V1/'
         tags: ['controller.service_arguments']
+
+    App\Interface\Controller\Api\V1\Teacher\GetAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'
+
+    App\Interface\Controller\Api\V1\Teacher\ListAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'
+
+    App\Interface\Controller\Api\V1\Student\GetAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'
+
+    App\Interface\Controller\Api\V1\Student\ListAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'
+
+    # Configure controllers with cache_ttl
+    App\Interface\Controller\Api\V1\Group\GetAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'
+
+    App\Interface\Controller\Api\V1\Group\ListAction:
+        arguments:
+            $cache_ttl: '%cache_ttl%'

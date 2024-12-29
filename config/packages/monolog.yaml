@@ -1,7 +1,31 @@
 monolog:
     channels:
-        - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
+        - deprecation
         - debug_log
+        - cache_invalidation
+
+    handlers:
+        main:
+            type: stream
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
+            level: debug
+            channels: ["!event", "!doctrine", "!deprecation", "!php"]
+        
+        deprecation:
+            type: stream
+            path: "%kernel.logs_dir%/deprecated.log"
+            level: debug
+            channels: ["deprecation", "php"]
+            formatter: monolog.formatter.json
+            bubble: false
+
+        cache_invalidation:
+            type: stream
+            path: "%kernel.logs_dir%/cache_invalidation.log"
+            level: debug
+            channels: ["cache_invalidation"]
+            formatter: monolog.formatter.app_formatter
+            bubble: false
 
 services:
     monolog.formatter.app_formatter:
@@ -34,7 +58,7 @@ when@dev:
                 type: stream
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
-                channels: ["!event", "!doctrine"]
+                channels: ["!event", "!doctrine", "!deprecation"]
             doctrine:
                 type: stream
                 path: "%kernel.logs_dir%/doctrine.log"
@@ -45,6 +69,31 @@ when@dev:
                 path: "%kernel.logs_dir%/debug_log.log"
                 level: debug
                 channels: [ "debug_log" ]
+            cache_invalidation:
+                type: stream
+                path: "%kernel.logs_dir%/cache_invalidation.log"
+                level: debug
+                channels: [ "cache_invalidation" ]
+                formatter: monolog.formatter.app_formatter
+                handler: filter_deprecation
+            filter_deprecation:
+                type: filter
+                handler: deprecation
+                accepted_levels: [100, 200, 250, 300]  # DEBUG, INFO, NOTICE, WARNING
+                channels: ["!deprecation"]
+            deprecation:
+                type: stream
+                path: "%kernel.logs_dir%/deprecated.log"
+                channels: ["deprecation", "php"]
+                level: warning
+                formatter: monolog.formatter.json
+                bubble: false
+            error:
+                type: stream
+                path: "%kernel.logs_dir%/error.log"
+                level: error
+                channels: ["!event"]
+                formatter: monolog.formatter.json
             # uncomment to get logging in your browser
             # you may have to allow bigger header sizes in your Web server configuration
             #firephp:

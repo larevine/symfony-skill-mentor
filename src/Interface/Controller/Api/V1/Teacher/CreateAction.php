@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Teacher;
 
-use DomainException;
 use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\PersonName;
@@ -42,7 +41,7 @@ final class CreateAction extends ApiController
             );
 
             return $this->json(TeacherResponse::fromEntity($teacher), Response::HTTP_CREATED);
-        } catch (DomainException $e) {
+        } catch (\DomainException $e) {
             throw ApiException::fromDomainException($e);
         }
     }

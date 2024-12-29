@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Teacher;
 
-use DomainException;
 use App\Domain\Service\TeacherServiceInterface;
-use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\Email;
+use App\Domain\ValueObject\EntityId;
 use App\Domain\ValueObject\Name;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\TeacherResponse;
 use App\Interface\DTO\UpdateTeacherRequest;
 use App\Interface\Exception\ApiException;
+use DomainException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -48,7 +48,9 @@ final class UpdateAction extends ApiController
                 max_groups: $request->max_groups ?? $teacher->getMaxGroups(),
             );
 
-            return $this->json(TeacherResponse::fromEntity($teacher));
+            return $this->json(TeacherResponse::fromEntity(
+                $this->teacher_service->findById($teacher_id)
+            ));
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

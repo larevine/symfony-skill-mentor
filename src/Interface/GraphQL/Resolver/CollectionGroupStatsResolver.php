@@ -12,11 +12,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 use Psr\Log\LoggerInterface;
 
-final class CollectionGroupStatsResolver implements QueryCollectionResolverInterface
+final readonly class CollectionGroupStatsResolver implements QueryCollectionResolverInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly LoggerInterface $logger,
+        private EntityManagerInterface $em,
+        private LoggerInterface $logger,
     ) {
     }
 

@@ -12,11 +12,12 @@ use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
 use DomainException;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
-#[Route('/v1/groups/{id}/teacher/{teacher_id}', methods: ['PUT'])]
+#[Route('/v1/groups/{id}/teacher/{teacher_id}', methods: ['POST'])]
 final class AssignTeacherAction extends ApiController
 {
     public function __construct(
@@ -37,11 +38,9 @@ final class AssignTeacherAction extends ApiController
             $teacher = $this->teacher_service->findById($teacher_id);
             $this->validateEntityExists($teacher, 'Teacher not found');
 
-            // Используем оба сервиса для поддержания консистентности
-            $this->teacher_service->assignToGroup($teacher, $group);
             $this->group_service->assignTeacher($group, $teacher);
 
-            return $this->json(GroupResponse::fromEntity($group));
+            return $this->json(GroupResponse::fromEntity($group), Response::HTTP_OK);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }

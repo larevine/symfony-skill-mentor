@@ -55,13 +55,12 @@ final class CreateAction extends ApiController
                 $skill = $this->skill_service->findById($skill_id);
                 $this->validateEntityExists($skill, 'Skill not found');
 
-                $level = match ($skill_data['level']) {
-                    1 => new ProficiencyLevel('beginner'),
-                    2 => new ProficiencyLevel('intermediate'),
-                    3, 4 => new ProficiencyLevel('advanced'),
-                    5 => new ProficiencyLevel('expert'),
-                    default => throw ApiException::validationError('Invalid skill level'),
-                };
+                try {
+                    $level = ProficiencyLevel::fromInt($skill_data['level']);
+                } catch (DomainException) {
+                    throw ApiException::validationError('Invalid skill level');
+                }
+
                 $this->group_service->addSkill($group, $skill, $level);
             }
 

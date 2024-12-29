@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Group;
 
-use DomainException;
 use App\Domain\Service\GroupServiceInterface;
 use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
-use App\Interface\DTO\UpdateGroupRequest;
 use App\Interface\DTO\GroupResponse;
+use App\Interface\DTO\UpdateGroupRequest;
 use App\Interface\Exception\ApiException;
+use DomainException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;

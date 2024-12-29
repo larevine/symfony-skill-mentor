@@ -18,8 +18,8 @@ security:
             stateless: true
             provider: app_user_provider
             jwt: ~
-            custom_authenticators:
-                - App\Infrastructure\Security\TokenAuthenticator
+#            custom_authenticators:
+#                - App\Infrastructure\Security\TokenAuthenticator
         web:
             pattern: ^/(?!api)
             stateless: false
@@ -57,7 +57,7 @@ security:
         - { path: ^/api/v1/teachers$, roles: ROLE_ADMIN, methods: [ POST ] }
         - { path: ^/api/v1/teachers/\d+$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }
         - { path: ^/api/v1/teachers/\d+$, roles: ROLE_ADMIN, methods: [ PUT, DELETE ] }
-        - { path: ^/api/v1/teachers/\d+/skills, roles: ROLE_ADMIN }
+        - { path: ^/api/v1/teachers/\d+/skills, roles: [ ROLE_ADMIN, ROLE_TEACHER ] }
         
         # Web Teachers
         - { path: ^/teachers$, roles: IS_AUTHENTICATED_FULLY, methods: [ GET ] }

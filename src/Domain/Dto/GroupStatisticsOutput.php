@@ -18,21 +18,21 @@ use Symfony\Component\Serializer\Annotation\SerializedName;
         )
     ]
 )]
-final class GroupStatisticsOutput
+final readonly class GroupStatisticsOutput
 {
     public function __construct(
         #[SerializedName('group_id')]
-        public readonly int $group_id,
+        public int $group_id,
         #[SerializedName('group_name')]
-        public readonly string $group_name,
+        public string $group_name,
         #[SerializedName('student_count')]
-        public readonly int $student_count,
+        public int $student_count,
         #[SerializedName('min_students')]
-        public readonly int $min_students,
+        public int $min_students,
         #[SerializedName('max_students')]
-        public readonly int $max_students,
+        public int $max_students,
         #[SerializedName('teacher_name')]
-        public readonly string $teacher_name,
+        public string $teacher_name,
     ) {
     }
 }

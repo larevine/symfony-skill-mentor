@@ -1,0 +1,30 @@
+monolog:
+    channels:
+        - deprecation
+        - consumer
+        - consumer_error
+
+    handlers:
+        consumer:
+            type: stream
+            path: "%kernel.logs_dir%/consumer.log"
+            level: debug
+            channels: ["consumer"]
+            formatter: monolog.formatter.app_formatter
+            bubble: false
+
+        consumer_error:
+            type: stream
+            path: "%kernel.logs_dir%/consumer_error.log"
+            level: error
+            channels: ["consumer_error"]
+            formatter: monolog.formatter.json
+            bubble: false
+
+        consumer_deprecation:
+            type: stream
+            path: "%kernel.logs_dir%/consumer_deprecated.log"
+            level: debug
+            channels: ["deprecation"]
+            formatter: monolog.formatter.json
+            bubble: false

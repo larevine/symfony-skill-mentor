@@ -7,7 +7,7 @@ namespace App\Interface\Controller\Web\Teacher;
 use App\Domain\Service\TeacherServiceInterface;
 use App\Domain\Service\SkillServiceInterface;
 use App\Domain\ValueObject\EntityId;
-use App\Domain\ValueObject\ProficiencyLevel;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +19,7 @@ final class ManageSkillsAction extends AbstractController
     public function __construct(
         private readonly TeacherServiceInterface $teacher_service,
         private readonly SkillServiceInterface $skill_service,
+        private readonly ProducerInterface $teacher_skills_producer
     ) {
     }
 
@@ -32,31 +33,29 @@ final class ManageSkillsAction extends AbstractController
 
         if ($request->isMethod('POST')) {
             $skill_levels = $request->request->all('skill_levels');
-            $current_skills = $teacher->getSkills();
+            $skills = [];
 
-            // Remove old skills
-            foreach ($current_skills as $skill) {
-                $this->teacher_service->removeSkill($teacher, $skill->getSkill());
-            }
-
-            // Add new skills
             foreach ($skill_levels as $skill_id => $level) {
                 if ($level > 0) {
-                    $skill = $this->skill_service->findById(new EntityId((int)$skill_id));
-                    if ($skill !== null) {
-                        $proficiency_level = new ProficiencyLevel(match ((int)$level) {
+                    $skills[] = [
+                        'skill_id' => $skill_id,
+                        'level' => match ((int)$level) {
                             1 => 'beginner',
                             2 => 'intermediate',
                             3, 4 => 'advanced',
                             5 => 'expert',
                             default => throw new \DomainException('Invalid skill level'),
-                        });
-                        $this->teacher_service->addSkill($teacher, $skill, $proficiency_level);
-                    }
+                        }
+                    ];
                 }
             }
 
-            $this->addFlash('success', 'Teacher skills updated successfully');
+            $this->teacher_skills_producer->publish(json_encode([
+                'teacher_id' => $id,
+                'skills' => $skills
+            ]));
+
+            $this->addFlash('success', 'Teacher skills update has been scheduled');
 
             return $this->redirectToRoute('web_teacher_list');
         }

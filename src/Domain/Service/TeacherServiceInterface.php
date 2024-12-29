@@ -71,6 +71,11 @@ interface TeacherServiceInterface
     public function addSkill(Teacher $teacher, Skill $skill, ProficiencyLevel $level): void;
 
     /**
+     * Sends teacher skills to message queue for async processing.
+     */
+    public function publishTeacherSkills(Teacher $teacher): void;
+
+    /**
      * Removes a skill from a teacher.
      * @see TeacherService::removeSkill()
      */

@@ -8,6 +8,11 @@ use App\Domain\Aggregate\TeacherWorkloadAggregate;
 use App\Domain\Entity\Group;
 use App\Domain\Entity\Skill;
 use App\Domain\Entity\Teacher;
+use App\Domain\Event\Teacher\TeacherCreatedEvent;
+use App\Domain\Event\Teacher\TeacherDeletedEvent;
+use App\Domain\Event\Teacher\TeacherSkillAddedEvent;
+use App\Domain\Event\Teacher\TeacherSkillRemovedEvent;
+use App\Domain\Event\Teacher\TeacherUpdatedEvent;
 use App\Domain\Exception\TeacherException;
 use App\Domain\Repository\SkillRepositoryInterface;
 use App\Domain\Repository\TeacherRepositoryInterface;
@@ -17,13 +22,15 @@ use App\Domain\ValueObject\Email;
 use App\Domain\ValueObject\ProficiencyLevel;
 use App\Interface\DTO\TeacherFilterRequest;
 use DomainException;
-use App\Domain\Service\TeacherServiceInterface;
+use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 
 readonly class TeacherService implements TeacherServiceInterface
 {
     public function __construct(
         private TeacherRepositoryInterface $teacher_repository,
         private SkillRepositoryInterface $skill_repository,
+        private ProducerInterface $teacher_skills_producer,
+        private ProducerInterface $domain_events_producer,
     ) {
     }
 
@@ -123,6 +130,19 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $this->teacher_repository->save($teacher);
 
+            $event = new TeacherCreatedEvent(
+                $teacher->getId(),
+                [
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
+
             return $teacher;
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
@@ -137,6 +157,15 @@ readonly class TeacherService implements TeacherServiceInterface
                 $this->teacher_repository
             );
             $workload->assignGroup($group);
+
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -150,6 +179,15 @@ readonly class TeacherService implements TeacherServiceInterface
                 $this->teacher_repository
             );
             $workload->removeGroup($group);
+
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                ['groups' => array_map(fn (Group $g) => $g->getId(), $teacher->getTeachingGroups()->toArray())]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
@@ -162,6 +200,18 @@ readonly class TeacherService implements TeacherServiceInterface
             $this->teacher_repository
         );
         $aggregate->addSkill($skill, $level);
+
+        $this->publishTeacherSkills($teacher);
+
+        $event = new TeacherSkillAddedEvent(
+            $teacher->getId(),
+            $skill->getId(),
+            $level->getLabel()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 
     public function removeSkill(Teacher $teacher, Skill $skill): void
@@ -171,6 +221,15 @@ readonly class TeacherService implements TeacherServiceInterface
             $this->teacher_repository
         );
         $aggregate->removeSkill($skill);
+
+        $event = new TeacherSkillRemovedEvent(
+            $teacher->getId(),
+            $skill->getId()
+        );
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
     }
 
     public function update(
@@ -188,19 +247,56 @@ readonly class TeacherService implements TeacherServiceInterface
 
             $workload->updatePersonalInfo($first_name, $last_name, $email);
             $workload->updateMaxGroups($max_groups);
+
+            $event = new TeacherUpdatedEvent(
+                $teacher->getId(),
+                [
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                ]
+            );
+            $this->domain_events_producer->publish(
+                json_encode($event->toArray()),
+                $event->getEventName()
+            );
         } catch (DomainException $e) {
             throw TeacherException::fromDomainException($e);
         }
     }
 
-    public function save(Teacher $teacher): void
-    {
-        $this->teacher_repository->save($teacher);
-    }
-
     public function delete(Teacher $teacher): void
     {
         $this->teacher_repository->remove($teacher);
+
+        $event = new TeacherDeletedEvent($teacher->getId());
+        $this->domain_events_producer->publish(
+            json_encode($event->toArray()),
+            $event->getEventName()
+        );
+    }
+
+    public function publishTeacherSkills(Teacher $teacher): void
+    {
+        $skills = [];
+        foreach ($teacher->getSkills() as $proficiency) {
+            $skills[] = [
+                'skill_id' => $proficiency->getSkill()->getId(),
+                'level' => $proficiency->getLevel()->getValue()
+            ];
+        }
+
+        $message = [
+            'teacher_id' => $teacher->getId(),
+            'skills' => $skills
+        ];
+
+        $this->teacher_skills_producer->publish(json_encode($message));
+    }
+
+    public function save(Teacher $teacher): void
+    {
+        $this->teacher_repository->save($teacher);
     }
 
     public function findSkillById(EntityId $id): ?Skill

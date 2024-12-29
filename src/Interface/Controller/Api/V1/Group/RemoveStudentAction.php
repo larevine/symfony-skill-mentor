@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Interface\Controller\Api\V1\Group;
 
-use DomainException;
 use App\Domain\Service\GroupServiceInterface;
 use App\Domain\Service\StudentServiceInterface;
 use App\Domain\ValueObject\EntityId;
 use App\Interface\Controller\Api\V1\ApiController;
 use App\Interface\DTO\GroupResponse;
 use App\Interface\Exception\ApiException;
+use DomainException;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -41,7 +42,7 @@ final class RemoveStudentAction extends ApiController
             $this->student_service->leaveGroup($student, $group);
             $this->group_service->removeStudent($group, $student);
 
-            return $this->json(GroupResponse::fromEntity($group));
+            return $this->json(GroupResponse::fromEntity($group), Response::HTTP_OK);
         } catch (DomainException $e) {
             throw ApiException::fromDomainException($e);
         }
