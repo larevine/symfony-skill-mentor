@@ -35,11 +35,11 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_CREATED, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_CREATED, $this->client->getResponse()->getStatusCode());
         self::assertArrayHasKey('id', $data);
-        self::assertEquals($group_data['name'], $data['name']);
-        self::assertEquals($group_data['min_students'], $data['min_students']);
-        self::assertEquals($group_data['max_size'], $data['max_students']);
+        self::assertSame($group_data['name'], $data['name']);
+        self::assertSame($group_data['min_students'], $data['min_students']);
+        self::assertSame($group_data['max_size'], $data['max_students']);
     }
 
     public function testGetGroup(): void
@@ -51,10 +51,10 @@ class GroupControllerTest extends AbstractApiTestCase
         $this->jsonRequest('GET', "/api/v1/groups/{$group_id}");
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
-        self::assertEquals($group_data['name'], $data['name']);
-        self::assertEquals($group_data['min_students'], $data['min_students']);
-        self::assertEquals($group_data['max_size'], $data['max_students']);
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame($group_data['name'], $data['name']);
+        self::assertSame($group_data['min_students'], $data['min_students']);
+        self::assertSame($group_data['max_size'], $data['max_students']);
     }
 
     public function testAssignTeacher(): void
@@ -70,9 +70,9 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
-        self::assertEquals($new_teacher['first_name'], $data['teacher']['first_name']);
-        self::assertEquals($new_teacher['last_name'], $data['teacher']['last_name']);
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame($new_teacher['first_name'], $data['teacher']['first_name']);
+        self::assertSame($new_teacher['last_name'], $data['teacher']['last_name']);
     }
 
     public function testAddStudent(): void
@@ -88,10 +88,10 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
         self::assertCount(1, $data['students']);
-        self::assertEquals($new_student['first_name'], $data['students'][0]['first_name']);
-        self::assertEquals($new_student['last_name'], $data['students'][0]['last_name']);
+        self::assertSame($new_student['first_name'], $data['students'][0]['first_name']);
+        self::assertSame($new_student['last_name'], $data['students'][0]['last_name']);
     }
 
     public function testAddStudentToFullGroup(): void
@@ -112,7 +112,7 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_CREATED, $this->client->getResponse()->getStatusCode(), json_encode($data));
+        self::assertSame(Response::HTTP_CREATED, $this->client->getResponse()->getStatusCode(), json_encode($data));
         self::assertArrayHasKey('id', $data);
         $group_id = $data['id'];
 
@@ -126,7 +126,7 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_OK, $this->client->getResponse()->getStatusCode(), json_encode($data));
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode(), json_encode($data));
 
         // Try to add second student to group - should fail
         $this->jsonRequest(
@@ -135,7 +135,7 @@ class GroupControllerTest extends AbstractApiTestCase
         );
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_BAD_REQUEST, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_BAD_REQUEST, $this->client->getResponse()->getStatusCode());
         self::assertArrayHasKey('type', $data);
         self::assertArrayHasKey('title', $data);
         self::assertStringContainsString('An error occurred', $data['title']);
@@ -147,9 +147,9 @@ class GroupControllerTest extends AbstractApiTestCase
         $this->jsonRequest('GET', '/api/v1/groups?search=Math');
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        self::assertEquals(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
         self::assertIsArray($data);
         self::assertCount(3, $data['items']);
-        self::assertEquals('Math Group', $data['items'][0]['name']);
+        self::assertSame('Math Group', $data['items'][0]['name']);
     }
 }
