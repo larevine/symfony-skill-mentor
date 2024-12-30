@@ -71,9 +71,9 @@ class TeacherWorkflowTest extends KernelTestCase
         );
 
         // Assert changes
-        self::assertEquals('Jane', $teacher->getFirstName());
-        self::assertEquals('Smith', $teacher->getLastName());
-        self::assertEquals('jane.smith@example.com', $teacher->getEmail());
+        self::assertSame('Jane', $teacher->getFirstName());
+        self::assertSame('Smith', $teacher->getLastName());
+        self::assertSame('jane.smith@example.com', $teacher->getEmail());
     }
 
     public function testTeacherCacheInvalidation(): void
@@ -136,7 +136,7 @@ class TeacherWorkflowTest extends KernelTestCase
         // Assert skill is added
         $teacher_skills = $teacher->getSkills();
         self::assertCount(1, $teacher_skills);
-        self::assertEquals($skill->getId(), $teacher_skills[0]->getId());
+        self::assertSame($skill->getId(), $teacher_skills[0]->getId());
     }
 
     public function testTeacherGroupAssignmentWorkflow(): void

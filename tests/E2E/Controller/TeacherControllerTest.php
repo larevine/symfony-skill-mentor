@@ -34,11 +34,11 @@ class TeacherControllerTest extends AbstractApiTestCase
         $this->jsonRequest('POST', '/api/v1/teachers', $teacher_data);
 
         $response = $this->client->getResponse();
-        $this->assertEquals(Response::HTTP_CREATED, $response->getStatusCode());
+        $this->assertSame(Response::HTTP_CREATED, $response->getStatusCode());
 
         $data = $this->getResponseContent();
         self::assertArrayHasKey('id', $data);
-        self::assertEquals($teacher_data['email'], $data['email']);
+        self::assertSame($teacher_data['email'], $data['email']);
     }
 
     public function testGetTeacher(): void
@@ -53,12 +53,12 @@ class TeacherControllerTest extends AbstractApiTestCase
         $this->jsonRequest('GET', "/api/v1/teachers/{$teacher->getId()}");
 
         $response = $this->client->getResponse();
-        self::assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
         $data = $this->getResponseContent();
-        self::assertEquals($teacher_data['email'], $data['email']);
-        self::assertEquals($teacher_data['first_name'], $data['first_name']);
-        self::assertEquals($teacher_data['last_name'], $data['last_name']);
+        self::assertSame($teacher_data['email'], $data['email']);
+        self::assertSame($teacher_data['first_name'], $data['first_name']);
+        self::assertSame($teacher_data['last_name'], $data['last_name']);
     }
 
     public function testDeleteTeacher(): void
@@ -67,13 +67,13 @@ class TeacherControllerTest extends AbstractApiTestCase
         $this->jsonRequest('DELETE', '/api/v1/teachers/' . $teacher_id);
 
         $response = $this->client->getResponse();
-        self::assertEquals(Response::HTTP_NO_CONTENT, $response->getStatusCode());
+        self::assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode());
 
         $this->cache->invalidateTags(['teachers', 'teacher_' . $teacher_id]);
 
         // Verify teacher is deleted
         $this->jsonRequest('GET', '/api/v1/teachers/' . $teacher_id);
-        self::assertEquals(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
     }
 
     public function testUpdateTeacher(): void
@@ -88,14 +88,14 @@ class TeacherControllerTest extends AbstractApiTestCase
         $this->jsonRequest('PUT', '/api/v1/teachers/' . $teacher_id, $update_data);
 
         $response = $this->client->getResponse();
-        self::assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
         $this->cache->invalidateTags(['teachers', 'teacher_' . $teacher_id]);
 
         $data = $this->getResponseContent();
-        self::assertEquals($update_data['first_name'], $data['first_name']);
-        self::assertEquals($update_data['last_name'], $data['last_name']);
-        self::assertEquals($update_data['max_groups'], $data['max_groups']);
+        self::assertSame($update_data['first_name'], $data['first_name']);
+        self::assertSame($update_data['last_name'], $data['last_name']);
+        self::assertSame($update_data['max_groups'], $data['max_groups']);
     }
 
     public function testSearchTeachers(): void
@@ -103,7 +103,7 @@ class TeacherControllerTest extends AbstractApiTestCase
         $this->jsonRequest('GET', '/api/v1/teachers?search=John');
 
         $response = $this->client->getResponse();
-        self::assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
         $data = $this->getResponseContent();
         self::assertIsArray($data);
