@@ -51,26 +51,42 @@ final readonly class GroupStatistics
         return $this->id;
     }
 
+    /**
+     * Имя группы.
+     */
     public function getName(): string
     {
         return $this->name;
     }
 
+    /**
+     * Количество студентов в группе.
+     */
     public function getStudentsCount(): ?int
     {
         return $this->students_count;
     }
 
+
+    /**
+     * Процент заполненности группы.
+     */
     public function getCapacityPercentage(): ?float
     {
         return $this->capacity_percentage;
     }
 
+    /**
+     * Заполнена ли группа.
+     */
     public function isAtCapacity(): ?bool
     {
         return $this->is_at_capacity;
     }
 
+    /**
+     * Количество доступных мест.
+     */
     public function getAvailableSlots(): ?int
     {
         return $this->available_slots;

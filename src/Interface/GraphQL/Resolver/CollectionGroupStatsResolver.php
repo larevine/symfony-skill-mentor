@@ -79,8 +79,14 @@ final readonly class CollectionGroupStatsResolver implements QueryCollectionReso
                     $group->getId(),
                     $group->getName(),
                     $group->getStudents()->count(),
+                    // Рассчитывается как отношение текущего количества студентов к максимальному количеству
+                    // мест (вместимости группы)
                     $this->calculateCapacityPercentage($group),
+                    // Заполнена ли группа. Проверяется как сравнение текущего количества студентов с вместимостью
+                    // группы
                     !$group->canAcceptMoreStudents(),
+                    // Количество доступных мест в группе. Рассчитывается как разница между максимальной вместимостью
+                    // группы и текущим количеством студентов
                     $group->getMaxStudents() - $group->getStudents()->count(),
                     sprintf(
                         '%s %s',

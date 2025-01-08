@@ -13,7 +13,10 @@ use InvalidArgumentException;
 #[ORM\Entity]
 #[ORM\Table(name: 'skill_proficiencies')]
 #[ORM\Index(name: 'skill_proficiencies__level__idx', columns: ['level'])]
-#[ORM\UniqueConstraint(name: 'skill_proficiencies__unique_assignment', columns: ['skill_id', 'teacher_id', 'student_id', 'group_id'])]
+#[ORM\UniqueConstraint(
+    name: 'skill_proficiencies__unique_assignment',
+    columns: ['skill_id', 'teacher_id', 'student_id', 'group_id'],
+)]
 // API-platform
 #[ApiResource]
 class SkillProficiency

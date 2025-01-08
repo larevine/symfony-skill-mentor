@@ -23,11 +23,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
 #[ORM\Index(name: 'groups__name__idx', columns: ['name'])]
 #[ORM\Index(name: 'groups__teacher_id__idx', columns: ['teacher_id'])]
 # API-platform
-#[ApiFilter(SearchFilter::class, properties: [
-    'teacher.first_name' => 'partial',
-    'teacher.last_name' => 'partial',
-])]
-// API-platform
+#[ApiFilter(SearchFilter::class, properties: ['name' => 'partial'])]
 #[ApiResource(
     shortName: 'Group',
     graphQlOperations: [
