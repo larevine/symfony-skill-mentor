@@ -108,7 +108,7 @@ class GroupWorkflowTest extends KernelTestCase
         $students = $group->getStudents();
         self::assertCount(2, $students);
 
-        $student_ids = array_map(fn($student) => $student->getId(), $students->toArray());
+        $student_ids = array_map(fn ($student) => $student->getId(), $students->toArray());
         self::assertContains($student1->getId(), $student_ids);
         self::assertContains($student2->getId(), $student_ids);
     }

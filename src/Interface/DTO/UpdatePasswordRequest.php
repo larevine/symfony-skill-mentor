@@ -12,7 +12,6 @@ readonly class UpdatePasswordRequest
         #[Assert\NotBlank]
         #[Assert\Length(min: 6)]
         public string $current_password,
-
         #[Assert\NotBlank]
         #[Assert\Length(min: 6)]
         public string $new_password,
