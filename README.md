@@ -1,3 +1,3 @@
-# Репозиторий для сдачи ДЗ по курсу Symfony
+# Educational Management System
 
-https://otus.ru/lessons/symfony/?utm_source=github&utm_medium=free&utm_campaign=otus
+Система управления образовательным процессом, построенная на принципах Domain-Driven Design (DDD).
